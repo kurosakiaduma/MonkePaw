@@ -1,0 +1,33 @@
+{
+  "variables": [
+    {"name": "five", "type": "int", "value": "5"},
+    {"name": "ten", "type": "int", "value": "10"}
+  ],
+  "functions": [
+    {
+      "name": "add",
+      "parameters": ["x", "y"],
+      "body": [
+        {"operation": "+", "operand1": "x", "operand2": "y", "result": "temp1"}
+      ]
+    }
+  ],
+  "statements": [
+    {"type": "assignment", "variable_name": "result", "value": "call add(five, ten)"},
+    {"type": "unary", "operation": "!", "operand1": "-", "operand2": "/5", "result": "temp2"},
+    {"type": "binary", "operation": "<", "operand1": "5", "operand2": "10", "result": "temp3"},
+    {"type": "binary", "operation": ">", "operand1": "temp3", "operand2": "5", "result": "temp4"},
+    {
+      "type": "if",
+      "condition": "5 < 10",
+      "then_branch": [
+        {"type": "return", "value": "true"}
+      ],
+      "else_branch": [
+        {"type": "return", "value": "false"},
+        {"type": "binary", "operation": "==", "operand1": "10", "operand2": "10", "result": "temp5"},
+        {"type": "binary", "operation": "!=", "operand1": "10", "operand2": "9", "result": "temp6"}
+      ]
+    }
+  ]
+}
