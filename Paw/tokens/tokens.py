@@ -2,9 +2,11 @@ class TokenType(str):
     pass
 
 class Token:
-    def __init__(self, type_, lexeme):
+    def __init__(self, type_, lexeme, begin_position, line_position):
         self.type = type_
         self.lexeme = lexeme
+        self.begin_position = begin_position
+        self.line_position = line_position
 
 # token types
 ILLEGAL = "ILLEGAL"
@@ -13,6 +15,9 @@ EOF = "EOF"
 # Identifiers + lexemes
 IDENT = "IDENT" # add, x, any, ...
 INT = "INT"   # 1343456
+FLOAT = "FLOAT" # 12.23
+STR = "STR" # "I am a string", 'I am a string', '"Valid string"', "'Valid string'"
+
 
 # Operators
 ASSIGN   = "="
