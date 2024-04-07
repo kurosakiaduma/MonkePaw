@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package monke;
+
+service MonkeTranslator {
+  rpc Translate (IR) returns (PythonCode) {}
+}
+
+message IR {
+  repeated Variable variables = 1;
+  repeated Expression expressions = 2;
+  repeated Statement statements = 3;
+}
+
+message Variable {
+  string name = 1;
+  string type = 2; // The type of the variable (e.g., "int", "float", "string")
+  string value = 3; // The value of the variable
+}
+
+message Expression {
+  string operation = 1; // The operation being performed (e.g., "+", "-", "*", "/")
+  string operand1 = 2; // The first operand
+  string operand2 = 3; // The second operand
+}
+
+message Statement {
+  oneof stmt {
+    AssignmentStatement assignment = 1;
+    FunctionCall function_call = 2;
+    IfStatement if_statement = 3;
+    ForStatement for_statement = 4;
+    WhileStatement while_statement = 5;
+    ReturnStatement return_statement = 6;
+    ClassDefinition class_definition =7;
+  }
+}
+
+message AssignmentStatement {
+  string variable_name = 1;
+  Expression expression = 2;
+}
+
+message FunctionCall {
+  string function_name = 1;
+  repeated Expression arguments = 2;
+}
+
+message IfStatement {
+  Expression condition = 1;
+  repeated Statement then_branch = 2;
+  repeated Statement else_branch = 3;
+}
+
+message ForStatement {
+  AssignmentStatement initializer = 1;
+  Expression condition = 2;
+  AssignmentStatement increment = 3;
+  repeated Statement body = 4;
+}
+
+message WhileStatement {
+  Expression condition = 1;
+  repeated Statement body = 2;
+}
+
+message ReturnStatement {
+  Expression expression = 1;
+}
+
+message PythonCode {
+  string code = 1;
+}
