@@ -51,6 +51,7 @@ ELSE     = "ELSE"
 RETURN   = "RETURN"
 TRUE     = "TRUE"
 FALSE    = "FALSE"
+CLOCK    = "CLOCK"
 
 keywords = {
     "fn":     FUNCTION,
@@ -64,6 +65,7 @@ keywords = {
     "str": STR,
     "float": FLOAT,
     "bool": BOOL,
+    "clock": CLOCK,
 }
 
 def lookup_ident(ident):

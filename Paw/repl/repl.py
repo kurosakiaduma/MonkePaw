@@ -1,4 +1,4 @@
-import sys
+import time
 from lexer.lexer import Lexer
 from tokens import tokens
 
@@ -8,7 +8,10 @@ def start():
     while True:
         line = input(PROMPT)
         l = Lexer(line)
+        start_time = time.time()
         tok = l.next_token()
         while tok.type != tokens.EOF:
             print(f'{tok}\n')
             tok = l.next_token()
+        end_time = time.time()
+        print(f"Total runtime is {end_time-start_time}\n")
