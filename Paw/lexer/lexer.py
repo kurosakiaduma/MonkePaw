@@ -47,15 +47,28 @@ class Lexer:
     # Read an string from the character_stream
     def read_string(self):
         self.start_position = self.position + 1  # Skip the opening quote
+        self.position+=1
+        self.read_position+=1
+
         while True:
             self.read_char()
             if self.ch == '"':  # End of string
+                lexeme = self.character_stream[self.start_position:self.position]  # Exclude the closing quote    
+                # move current and lookahead forward
+                self.position+=1
+                self.read_position+=1
+                
+                try:
+                    self.ch = self.character_stream[self.position]
+                except IndexError:
+                    self.ch = '\0'
+                                    
                 break
             elif self.ch == '\0':  # End of file
                 raise ValueError("Unterminated string literal")
         self.critical = False
-        return self.character_stream[self.start_position:self.position]  # Exclude the closing quote    
-        
+        return lexeme
+                
     # Read a number from the character_stream
     def read_number(self):
         self.start_position = self.position
@@ -143,18 +156,12 @@ class Lexer:
                 tok = self.new_token(tok_type, tok_lexeme)
                 return tok
             elif self.ch == '"':
-                if str.isdigit(self.peek_char()):
-                    string_characters = self.read_string()
-                    if self.peek_char()=='"':
-                        lexeme = string_characters
-                        tok = self.new_token(tokens.STR, lexeme)
-                        self.read_char()
-                        self.read_char()
-                        return tok
-                    else:
-                        tok = self.new_token(tokens.ILLEGAL, '"' + lexeme)
-                        return tok
-                        
+                if str.isalnum(self.peek_char()):
+                    tok_lexeme = self.read_string()
+                    print(f"LEXEME: {tok_lexeme}")
+                    tok_type = tokens.STR
+                    tok = self.new_token(tok_type, tok_lexeme)
+                    return tok
             elif self.ch == '\0':  # End of input
                 return self.new_token(tokens.EOF, '')
             else:
