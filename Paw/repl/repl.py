@@ -14,4 +14,4 @@ def start():
             print(f'{tok}\n')
             tok = l.next_token()
         end_time = time.time()
-        print(f"Total runtime is {end_time-start_time}\n")
+        print(f"Total runtime is {round(end_time-start_time,8 )}\n")
