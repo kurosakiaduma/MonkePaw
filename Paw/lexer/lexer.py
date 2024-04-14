@@ -1,4 +1,4 @@
-from tokens import tokens
+from tokens.tokens import *
 
 class Lexer:
     def __init__(self, character_stream: str):
@@ -83,99 +83,99 @@ class Lexer:
         return self.character_stream[self.start_position:self.position]
 
     # Get the next tokens from the character_stream
-    def next_token(self)-> tokens.Token:
+    def next_token(self)-> Token:
         self.skip_whitespace()
         self.start_position = self.position
         if self.ch == '.':
-            tok =  self.new_token(tokens.DOT, self.ch)
+            tok =  self.new_token(DOT, self.ch)
         elif self.ch == '=':
             if self.peek_char() == '=':
                 ch = self.ch
-                tok = self.new_token(tokens.EQ, ch + self.ch)
+                tok = self.new_token(EQ, ch + self.ch)
                 self.read_char()
             else:
-                tok = self.new_token(tokens.ASSIGN, self.ch)
+                tok = self.new_token(ASSIGN, self.ch)
         elif self.ch == ";":
-            tok = self.new_token(tokens.SEMICOLON, self.ch)
+            tok = self.new_token(SEMICOLON, self.ch)
         elif self.ch == '(':
-            tok = self.new_token(tokens.LPAREN, self.ch)
+            tok = self.new_token(LPAREN, self.ch)
         elif self.ch == ')':
-            tok = self.new_token(tokens.RPAREN, self.ch)
+            tok = self.new_token(RPAREN, self.ch)
         elif self.ch == ',':
-            tok = self.new_token(tokens.COMMA, self.ch)
+            tok = self.new_token(COMMA, self.ch)
         elif self.ch == '+':
-            tok = self.new_token(tokens.PLUS, self.ch)
+            tok = self.new_token(PLUS, self.ch)
         elif self.ch == '-':
-            tok = self.new_token(tokens.MINUS, self.ch)
+            tok = self.new_token(MINUS, self.ch)
         elif self.ch == '!':
             if self.peek_char() == '=':
                 ch = self.ch
-                tok = self.new_token(tokens.NOT_EQ, (ch + self.ch))
+                tok = self.new_token(NOT_EQ, (ch + self.ch))
                 self.read_char()
             else:
-                tok = self.new_token(tokens.BANG, self.ch)
+                tok = self.new_token(BANG, self.ch)
         elif self.ch == '*':
-            tok = self.new_token(tokens.ASTERISK, self.ch)
+            tok = self.new_token(ASTERISK, self.ch)
         elif self.ch == '/':
             if self.peek_char() == "/":
                 self.line_position+=1
                 self.position=self.read_position = self.start_position=0
             else:
-                tok = self.new_token(tokens.SLASH, self.ch)
+                tok = self.new_token(SLASH, self.ch)
         elif self.ch == '<':
             if self.peek_char() == '=':
                 ch = self.ch
-                tok = self.new_token(tokens.LT_EQ, (ch + self.ch))
+                tok = self.new_token(LT_EQ, (ch + self.ch))
                 self.read_char()
             else:
-                tok = self.new_token(tokens.LT, self.ch)
+                tok = self.new_token(LT, self.ch)
         elif self.ch == '>':
             if self.peek_char() == '=':
                 ch = self.ch
-                tok = self.new_token(tokens.GT_EQ, (ch + self.ch))
+                tok = self.new_token(GT_EQ, (ch + self.ch))
                 self.read_char()
             else:
-                tok = self.new_token(tokens.GT, self.ch)
+                tok = self.new_token(GT, self.ch)
         elif self.ch == '{':
-            tok = self.new_token(tokens.LBRACE, self.ch)
+            tok = self.new_token(LBRACE, self.ch)
         elif self.ch == '}':
-            tok = self.new_token(tokens.RBRACE, self.ch)
+            tok = self.new_token(RBRACE, self.ch)
         elif self.ch == 0:
-            tok= self.new_token(tokens.EOF, "")
+            tok= self.new_token(EOF, "")
         else:
             # if the character is not a special character,
             # then it is an identifier
             if is_letter(self.ch):
                 tok_lexeme = self.read_identifier()
-                tok_type = tokens.lookup_ident(tok_lexeme)
+                tok_type = lookup_ident(tok_lexeme)
                 tok = self.new_token(tok_type, tok_lexeme)
                 return tok
             elif str.isdigit(self.ch):
                 tok_lexeme = self.read_number()
-                tok_type = tokens.FLOAT if '.' in tok_lexeme else tokens.INT
+                tok_type = FLOAT if '.' in tok_lexeme else INT
                 tok = self.new_token(tok_type, tok_lexeme)
                 return tok
             elif self.ch == '"':
                 if str.isalnum(self.peek_char()):
                     tok_lexeme = self.read_string()
                     print(f"LEXEME: {tok_lexeme}")
-                    tok_type = tokens.STR
+                    tok_type = STR
                     tok = self.new_token(tok_type, tok_lexeme)
                     return tok
             elif self.ch == '\0':  # End of input
-                return self.new_token(tokens.EOF, '')
+                return self.new_token(EOF, '')
             else:
-                tok = self.new_token(tokens.ILLEGAL, self.ch)
+                tok = self.new_token(ILLEGAL, self.ch)
         self.critical = False
         self.read_char()
         try:
             return tok
         except UnboundLocalError:
-            return self.new_token(tokens.EOF, '')
+            return self.new_token(EOF, '')
 
     # Helper method to create a new tokens
     def new_token(self, token_type, ch):
-        return tokens.Token(token_type, ch, begin_position=self.start_position, line_position=self.line_position)
+        return Token(token_type, ch, begin_position=self.start_position, line_position=self.line_position)
 
 # Check if a character is a letter
 def is_letter(ch):

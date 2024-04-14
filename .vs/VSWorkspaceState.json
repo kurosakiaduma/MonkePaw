@@ -1,0 +1,11 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\Monke\\lexer",
+    "\\Paw",
+    "\\Paw\\parser",
+    "\\Paw\\tokens"
+  ],
+  "SelectedNode": "\\Paw\\parser\\LL1.py",
+  "PreviewInSolutionExplorer": false
+}

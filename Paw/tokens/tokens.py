@@ -1,5 +1,5 @@
 class Token:
-    def __init__(self, type_, lexeme, begin_position, line_position):
+    def __init__(self, type_, lexeme, begin_position = None, line_position = None):
         self.type = type_
         self.lexeme = lexeme
         self.begin_position = begin_position
@@ -16,7 +16,7 @@ EOF = "EOF"
 IDENT = "IDENT" # add, x, any, ...
 INT = "INT"   # 1343456
 FLOAT = "FLOAT" # 12.23
-STR = "STR" # "I am a string", 'I am a string', '"Valid string"', "'Valid string'"
+STR = "STR" # "I am a string"
 BOOL = "BOOL" # True or False i.e. Boolean
 
 # Operators
@@ -45,6 +45,7 @@ RBRACE = "}"
 
 #Keywords
 FUNCTION = "FUNCTION"
+PRINT    = "PRINT"
 LET      = "LET"
 IF       = "IF"
 ELSE     = "ELSE"
@@ -52,10 +53,12 @@ RETURN   = "RETURN"
 TRUE     = "TRUE"
 FALSE    = "FALSE"
 CLOCK    = "CLOCK"
+LEN      = "LEN"
 
 keywords = {
     "fn":     FUNCTION,
     "let":    LET,
+    "print":  PRINT,
     "if":     IF,
     "else":   ELSE,
     "return": RETURN,
@@ -65,6 +68,7 @@ keywords = {
     "str": STR,
     "float": FLOAT,
     "bool": BOOL,
+    "len": LEN,
     "clock": CLOCK,
 }
 

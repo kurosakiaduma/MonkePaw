@@ -1,0 +1,10 @@
+let x=10;
+let a,b,c;
+x+c=10;
+fn sqrt(a):
+return math.sqrt(a)
+print "I am a string"
+print("I am a string")
+print sqrt a
+print(Not a valid print)
+print(sqrt(a))
