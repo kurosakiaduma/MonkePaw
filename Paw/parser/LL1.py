@@ -28,7 +28,10 @@ class Node:
         self.lexeme = token.lexeme
         self.begin_position = token.begin_position
         self.line_position = token.line_position
-        self.value = value  # Add value attribute here
+        self.value = value
+
+    def __repr__(self):
+        return f"{self.__class__.__name__} (type::= '{self.type}', lexeme::= '{self.lexeme}', value::='{self.value}')"
 
 class ProgramNode(Node):
     def __init__(self, token, statement_list, value=None):
