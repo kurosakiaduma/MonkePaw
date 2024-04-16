@@ -1,7 +1,9 @@
 import getpass, time
 from repl import repl
-from lexer.lexer import Lexer
 from tokens import tokens
+from lexer.lexer import Lexer
+from parser.parser import *
+from parser.LL1 import *
 
 def main():
     username = getpass.getuser()
@@ -25,11 +27,11 @@ def main():
     print("Type in commands to get started (or 'help' for options):")
 
     while True:
-        command = input("> ").lower()
+        command = input("(MonkePaw)> ").lower()
         if command == "start":
             repl.start()
             break  # Exit after starting the REPL
-        elif command in ["read_file", "rf"]:
+        elif command in ["scan_file", "sf"]:
             filename = input("Enter the full path of the file: ")
             try:
                 with open(filename, 'r', encoding='utf-8') as f:
@@ -43,8 +45,45 @@ def main():
                     tok = l.next_token()
                 end_time = time.time()
                 print(f"Total runtime is {round(end_time-start_time,8)}\n")
+
             except FileNotFoundError:
                 print("Error: File not found.")
+        elif command in ["show_tokens", "st"]:
+            try:
+                if l.tokens:
+                    print(l.tokens)
+                else:
+                    print("You have no tokens!\n")
+            except UnboundLocalError:
+                print("You need to scan some Monke first!\n")
+        elif command in ["parse_tokens", "pt"]:
+            try:
+                # Create a parser and start parsing
+                p = Parser(l.tokens)  # Pass the tokens deque to the parser
+                ast = p.parse()  # Call the parser's parse method
+                print(ast)  # Print the AST for debugging
+            except (UnboundLocalError, ReferenceError):
+                print("Scan your source code to generate some tokens first. Use 'keywords' command to find out how\n")
+        elif command in ["eval_tokens", "et"]:
+            while True:
+                inp = (input("(Token Evaluator) Enter position> "))
+                if inp == 'q':
+                    break
+                try:
+                    print(eval(f'\nl.tokens[{inp}]'))
+                    continue
+                except (IndexError, NameError):
+                    print("Out of bounds of token stream")
+
+        elif command in ["eval_ast", "ea"]:
+            while True:
+                inp = (input("(AST Evaluator) Enter position> "))
+                try:
+                    print(eval(f'\np.ast[{inp}]'))
+                except (IndexError, NameError):
+                    print("Out of bounds of AST")
+                if inp != 'q':
+                    break
         elif command == "keywords":
             print("Reserved Keywords:")
             for keyword in tokens.keywords.keys():
@@ -66,7 +105,10 @@ compilation. This Python workspace also hosts a Monke lexer.
 Available Commands:
 
 - start: Start the interactive REPL for tokenizing code.
-- read_file: Read code from a file and tokenize it.
+- scan_file: Read code from a file and tokenize it.
+- show_tokens: Show the tokens generated from the Lexical Analysis.
+- parse_tokens: Create an Abstract Syntax Tree from the tokens.
+- eval: Directly interact with your compiler output at any stage.\n'l' commands are for Lexer.\n'p' commands are for Parser.
 - keywords: List the reserved keywords in the Monke language.
 - about: Display information about the MonkePaw compiler.
 - exit: Exit the Monke compiler.
