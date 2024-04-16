@@ -1,5 +1,5 @@
 from tokens.tokens import *
-
+from collections import deque
 class Lexer:
     def __init__(self, character_stream: str):
         self.character_stream = character_stream
@@ -7,6 +7,7 @@ class Lexer:
         self.line_position = 1
         self.critical = False
         self.ch = ''
+        self.tokens = deque()
 
     # Initialize the lexer
     # read_position is similar to the lookahead
@@ -175,8 +176,9 @@ class Lexer:
 
     # Helper method to create a new tokens
     def new_token(self, token_type, ch):
-        return Token(token_type, ch, begin_position=self.start_position, line_position=self.line_position)
-
+        token = Token(token_type, ch, begin_position=self.start_position, line_position=self.line_position)
+        self.tokens.append(token)
+        return token
 # Check if a character is a letter
 def is_letter(ch):
     return ch.isalpha() or ch == '_'
