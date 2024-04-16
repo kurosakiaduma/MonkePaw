@@ -1,9 +1,10 @@
+from collections import deque
 from typing import Iterator
 from tokens.tokens import *
-from LL1 import *
+from parser.LL1 import *
 
 class Parser:
-    def __init__(self, token_stream):
+    def __init__(self, token_stream: deque):
         self.token_stream:Iterator = iter(token_stream)
         self.current_token:Token = None
         self.next_token:Token = next(self.token_stream)
@@ -15,41 +16,53 @@ class Parser:
             self.next_token = next(self.token_stream)
         except StopIteration:
             self.next_token = None
+    
+    def consume_semicolon(self):
+        if self.current_token.type == SEMICOLON:
+            self._consume()
+
 
     def parse(self):
+        ast = []
         while self.current_token is not None:
-            yield from self.statement()
+            stmt = self.statement()
+            if stmt is not None:
+                ast.append(stmt)
+                print(ast)
+        return ast
 
     def statement(self):
         if self.current_token.type == LET:
             self._consume()
             if self.next_token.type == ASSIGN:
-                yield from self.let_statement()
+                return self.let_statement()
             else:
-                yield from self.var_declaration()
+                return self.var_declaration()
         elif self.current_token.type == IDENT:
-            yield from self.assign_statement()
+            return self.assign_statement()
         elif self.current_token.type == RETURN:
-            yield from self.return_statement()
+            return self.return_statement()
         elif self.current_token.type == IF:
-            yield from self.if_statement()
+            return self.if_statement()
         elif self.current_token.type == PRINT:
-            yield from self.print_statement()
+            return self.print_statement()
         elif self.current_token.type == CLOCK:
-            yield from self.clock_statement()
+            return self.clock_statement()
         else:
-            yield from self.expression_statement()
-        self._consume()
+            return self.expression_statement()
+        
 
     def let_statement(self):
         name = self.current_token.lexeme
         self._consume()
         self._consume()
         value = self.expression()
+        self.consume_semicolon()
         return LetStatementNode(Token(ASSIGN, '='), name, value)
 
     def var_declaration(self):
         name = self.current_token.lexeme
+        self.consume_semicolon()
         return LetStatementNode(Token(LET, 'let'), name)
 
     def assign_statement(self):
@@ -57,15 +70,19 @@ class Parser:
         self._consume()
         self._consume()
         value = self.expression()
+        self.consume_semicolon()
         return AssignStatementNode(Token(ASSIGN, '='), name, value)
 
     def expression_statement(self):
         expr = self.expression()
+        self.consume_semicolon()
         return ExpressionStatementNode(Token(SEMICOLON, ';'), expr)
+
 
     def return_statement(self):
         self._consume()
         expr = self.expression()
+        self.consume_semicolon()
         return ReturnStatementNode(Token(RETURN, 'return'), expr)
 
     def if_statement(self):
@@ -82,11 +99,13 @@ class Parser:
             self._consume()
             else_branch = list(self.statement())
             self._consume()
+        self.consume_semicolon()
         return IfStatementNode(Token(IF, 'if'), condition, then_branch, else_branch)
 
     def print_statement(self):
         self._consume()
         expr = self.expression()
+        self.consume_semicolon()
         return PrintStatementNode(Token(PRINT, 'print'), expr)
 
     def clock_statement(self):
@@ -95,6 +114,7 @@ class Parser:
         function = self.current_token.lexeme
         self._consume()
         self._consume()
+        self.consume_semicolon()
         return ClockStatementNode(Token(CLOCK, 'clock'), function)
 
     def expression(self):
@@ -111,7 +131,7 @@ class Parser:
                 args = []
                 while self.current_token.type != RPAREN:
                     args.append(self.expression())
-                    if self.curren_token.type == COMMA:
+                    if self.current_token.type == COMMA:
                         self._consume()
                 return FunctionLiteralNode(Token(FUNCTION, function), args, [])
             else:
@@ -122,6 +142,7 @@ class Parser:
             return self.parse_expression()
 
     def parse_expression(self):
+        self.consume_semicolon()
         return self.parse_additive()
 
     def parse_additive(self):
@@ -140,6 +161,7 @@ class Parser:
             self._consume()
             right = self.parse_unary()
             expr = InfixExpressionNode(token, expr, token.lexeme, right)
+        self.consume_semicolon()
         return expr
 
     def parse_unary(self):
@@ -161,15 +183,17 @@ class Parser:
             elif self.current_token.type == IDENT:
                 name = self.current_token.lexeme
                 self._consume()
-                return IdentifierNode(Token(IDENT, name), name)
-            elif self.current_token.type == IDENT and self.next_token.type == LPAREN:
-                name = self.current_token.lexeme
-                self._consume()
-                if self.next_token.type == RPAREN:
+                if self.current_token.type == LPAREN:
                     self._consume()
-                    return IdentifierNode(Token(FUNCTION, name,), name)
-            else:
-                raise SyntaxError
+                    args = []
+                    while self.current_token.type != RPAREN:
+                        args.append(self.expression())
+                        if self.current_token.type == COMMA:
+                            self._consume()
+                    self._consume()  # Consume RPAREN
+                    return FunctionLiteralNode(Token(FUNCTION, name), args, [])
+                else:
+                    return IdentifierNode(Token(IDENT, name), name)
         except SyntaxError:
             self._error()
 
