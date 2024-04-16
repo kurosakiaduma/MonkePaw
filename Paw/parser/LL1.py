@@ -1,6 +1,3 @@
-from ast import AST
-
-
 grammar = {
     'program': [['statement_list']],
     'statement_list': [['statement', 'statement_list'], ['']],
@@ -25,16 +22,17 @@ grammar = {
 }
 
 class Node:
-    def __init__(self, token):
+    def __init__(self, token, value=None):
         self.token = token
         self.type = token.type
         self.lexeme = token.lexeme
         self.begin_position = token.begin_position
         self.line_position = token.line_position
+        self.value = value  # Add value attribute here
 
 class ProgramNode(Node):
-    def __init__(self, token, statement_list):
-        super().__init__(token)
+    def __init__(self, token, statement_list, value=None):
+        super().__init__(token, value)
         self.statement_list = statement_list
 
 class StatementNode(Node):
@@ -42,41 +40,41 @@ class StatementNode(Node):
 
 class LetStatementNode(StatementNode):
     def __init__(self, token, name, value=None):
-        super().__init__(token)
+        super().__init__(token, value)
         self.name = name
         self.value = value
 
 class AssignStatementNode(StatementNode):
     def __init__(self, token, name, value):
-        super().__init__(token)
+        super().__init__(token, value)
         self.name = name
         self.value = value
 
 class ExpressionStatementNode(StatementNode):
-    def __init__(self, token, expression):
-        super().__init__(token)
+    def __init__(self, token, expression, value=None):
+        super().__init__(token, value)
         self.expression = expression
 
 class ReturnStatementNode(StatementNode):
-    def __init__(self, token, expression):
-        super().__init__(token)
+    def __init__(self, token, expression, value=None):
+        super().__init__(token, value)
         self.expression = expression
 
 class IfStatementNode(StatementNode):
-    def __init__(self, token, condition, consequence, alternative):
-        super().__init__(token)
+    def __init__(self, token, condition, consequence, alternative, value=None):
+        super().__init__(token, value)
         self.condition = condition
         self.consequence = consequence
         self.alternative = alternative
 
 class PrintStatementNode(StatementNode):
-    def __init__(self, token, expression):
-        super().__init__(token)
+    def __init__(self, token, expression, value=None):
+        super().__init__(token, value)
         self.expression = expression
 
 class ClockStatementNode(StatementNode):
-    def __init__(self, token, function):
-        super().__init__(token)
+    def __init__(self, token, function, value=None):
+        super().__init__(token, value)
         self.function = function
 
 class ExpressionNode(Node):
@@ -84,49 +82,49 @@ class ExpressionNode(Node):
 
 class IntegerLiteralNode(ExpressionNode):
     def __init__(self, token, value):
-        super().__init__(token)
+        super().__init__(token, value)
         self.value = value
 
 class FloatLiteralNode(ExpressionNode):
     def __init__(self, token, value):
-        super().__init__(token)
+        super().__init__(token, value)
         self.value = value
 
 class StringLiteralNode(ExpressionNode):
     def __init__(self, token, value):
-        super().__init__(token)
+        super().__init__(token, value)
         self.value = value
 
 class BooleanLiteralNode(ExpressionNode):
     def __init__(self, token, value):
-        super().__init__(token)
+        super().__init__(token, value)
         self.value = value
 
 class IdentifierNode(ExpressionNode):
     def __init__(self, token, value):
-        super().__init__(token)
+        super().__init__(token, value)
         self.value = value
 
 class FunctionLiteralNode(ExpressionNode):
-    def __init__(self, token, parameters, body):
-        super().__init__(token)
+    def __init__(self, token, parameters, body, value=None):
+        super().__init__(token, value)
         self.parameters = parameters
         self.body = body
 
 class PrefixExpressionNode(ExpressionNode):
-    def __init__(self, token, operator, right):
-        super().__init__(token)
+    def __init__(self, token, operator, right, value=None):
+        super().__init__(token, value)
         self.operator = operator
         self.right = right
 
 class InfixExpressionNode(ExpressionNode):
-    def __init__(self, token, left, operator, right):
-        super().__init__(token)
+    def __init__(self, token, left, operator, right, value=None):
+        super().__init__(token, value)
         self.left = left
         self.operator = operator
         self.right = right
 
 class GroupedExpressionNode(ExpressionNode):
-    def __init__(self, token, expression):
-        super().__init__(token)
+    def __init__(self, token, expression, value=None):
+        super().__init__(token, value)
         self.expression = expression
