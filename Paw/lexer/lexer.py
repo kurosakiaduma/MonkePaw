@@ -8,6 +8,7 @@ class Lexer:
         self.critical = False
         self.ch = ''
         self.tokens = deque()
+        self.comment:bool|None = None
 
     # Initialize the lexer
     # read_position is similar to the lookahead
@@ -84,7 +85,7 @@ class Lexer:
         return self.character_stream[self.start_position:self.position]
 
     # Get the next tokens from the character_stream
-    def next_token(self)-> Token:
+    def next_token(self)-> Token | None:
         self.skip_whitespace()
         self.start_position = self.position
         if self.ch == '.':
@@ -119,8 +120,16 @@ class Lexer:
             tok = self.new_token(ASTERISK, self.ch)
         elif self.ch == '/':
             if self.peek_char() == "/":
-                self.line_position+=1
-                self.position=self.read_position = self.start_position=0
+                self.comment = True
+                while True:
+                    self.read_char()
+                    if (self.ch == '\n') or self.read_position > len(self.character_stream):
+                        print("STATS\n")
+                        print(self.read_position, self.position, len(self.character_stream))
+                        print("STATS\n")
+                        
+                        self.line_position+=1
+                        break
             else:
                 tok = self.new_token(SLASH, self.ch)
         elif self.ch == '<':
@@ -172,7 +181,9 @@ class Lexer:
         try:
             return tok
         except UnboundLocalError:
-            return self.new_token(EOF, '')
+            is_comment = self.comment
+            self.comment = False
+            return None if is_comment else self.new_token(EOF, '')
 
     # Helper method to create a new tokens
     def new_token(self, token_type, ch):

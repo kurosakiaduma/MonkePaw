@@ -1,8 +1,12 @@
 let x=10;
 let a,b,c;
-x+c=10;
+//x+c=10;
+x+c==10;
+//(x+c)==10;
 fn sqrt(a):
 return math.sqrt(a)
+clock.clock();
+clock;
 print "I am a string"
 print("I am a string")
 print sqrt a
