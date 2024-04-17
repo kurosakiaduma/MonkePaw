@@ -7,13 +7,19 @@ PROMPT = "(Lexer) >>"
 def start():
     while True:
         line = input(PROMPT)
+        line+='\n'
         if line == ":quit":
             return
         l = Lexer(line)
         start_time = time.time()
-        tok = l.next_token()
-        while tok.type != tokens.EOF:
-            print(f'{tok}\n')
+        while True:
             tok = l.next_token()
+            try:
+                if tok.type == tokens.EOF:
+                    break
+                print(f'{tok}\n')
+            except AttributeError:
+                continue
+                
         end_time = time.time()
-        print(f"Total runtime is {round(end_time-start_time,8 )}\n")
+        print(f"Total runtime is {round(end_time-start_time,8)}\n")
