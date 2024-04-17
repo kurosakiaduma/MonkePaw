@@ -7,7 +7,7 @@ class Lexer:
         self.line_position = 1
         self.critical = False
         self.ch = ''
-        self.tokens = deque()
+        self.tokens:deque[Token] = deque()
         self.comment:bool|None = None
 
     # Initialize the lexer
@@ -190,6 +190,7 @@ class Lexer:
         token = Token(token_type, ch, begin_position=self.start_position, line_position=self.line_position)
         self.tokens.append(token)
         return token
+
 # Check if a character is a letter
 def is_letter(ch):
     return ch.isalpha() or ch == '_'
