@@ -1,10 +1,13 @@
 class Token:
-    def __init__(self, type_, lexeme, begin_position = None, line_position = None):
+    def __init__(self, type_, lexeme:int|None, begin_position:int|None = None, line_position:int|None = None):
         self.type = type_
         self.lexeme = lexeme
         self.begin_position = begin_position
         self.line_position = line_position
     
+    def __str__(self) -> str:
+        return f'<Type:{self.type}, Lexeme:{self.lexeme}, BeginPosition:{self.begin_position}, LinePosition:{self.line_position}>'
+
     def __repr__(self) -> str:
         return f'<Type:{self.type}, Lexeme:{self.lexeme}, BeginPosition:{self.begin_position}, LinePosition:{self.line_position}>'
 
