@@ -39,10 +39,16 @@ def main():
                     print(content)
                 l = Lexer(character_stream=content)
                 start_time = time.time()
-                tok = l.next_token()
-                while tok.type != tokens.EOF:
-                    print(f'{tok}\n')
+                
+                while True:
                     tok = l.next_token()
+                    try:
+                        if tok.type == tokens.EOF:
+                            break
+                        print(f'{tok}\n')
+                    except AttributeError:
+                        continue
+                
                 end_time = time.time()
                 print(f"Total runtime is {round(end_time-start_time,8)}\n")
 
@@ -51,7 +57,8 @@ def main():
         elif command in ["show_tokens", "st"]:
             try:
                 if l.tokens:
-                    print(l.tokens)
+                    for i in l.tokens:
+                        print(i, end='\n\n')
                 else:
                     print("You have no tokens!\n")
             except UnboundLocalError:
