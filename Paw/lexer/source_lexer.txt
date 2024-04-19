@@ -5,6 +5,9 @@ x+c==10;
 //(x+c)==10;
 fn sqrt(a):
 return math.sqrt(a)
+fn sqrt(a){
+return math.sqrt(a)
+}
 clock.clock();
 clock;
 print "I am a string"

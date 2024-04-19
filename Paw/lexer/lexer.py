@@ -168,7 +168,6 @@ class Lexer:
             elif self.ch == '"':
                 if str.isalnum(self.peek_char()):
                     tok_lexeme = self.read_string()
-                    print(f"LEXEME: {tok_lexeme}")
                     tok_type = STR
                     tok = self.new_token(tok_type, tok_lexeme)
                     return tok
@@ -186,7 +185,7 @@ class Lexer:
             return None if is_comment else self.new_token(EOF, '')
 
     # Helper method to create a new tokens
-    def new_token(self, token_type, ch):
+    def new_token(self, token_type:Literal["str"]|str, ch:str):
         token = Token(token_type, ch, begin_position=self.start_position, line_position=self.line_position)
         self.tokens.append(token)
         return token
