@@ -32,17 +32,16 @@ class SymbolTable:
     def __init__(self, name:str, symbol: Symbol, type_:str):
         if not SymbolTable._instance:
             self = self.get_instance()
-            self.name = 'global'
-            self.global_symbols:Dict[Symbol,Dict[Symbol|Any,Any]|SymbolTable] = {}
-            self.type_ = 'context'
-            self.contexts:List[SymbolTable|Dict[str,SymbolTable|Dict[Symbol, Dict[Symbol|Any,Any]|SymbolTable]]] = [{f'{self.name}': self.global_symbols}]
+            self.global_symbols:Dict[str|Symbol,Dict[str|Symbol,Any]] = {}
+            self.contexts:List[Dict[str,SymbolTable|Dict[str|Symbol,Any]]] = [{f'{self.name}': self.global_symbols}]
             self.context_names:List[str] = [self.name]
             try:
-                kw_context = iter(keywords)
-                name = next(kw_context)
-                symbol = Symbol(token=Token(type_=name, lexeme=name,begin_position=None, line_position=None), context_level=0)
-                self.contexts.append(SymbolTable(name=symbol.name,symbol=symbol,type_='in_built'))
-                self.global_symbols[symbol] = {symbol:{}}
+                while True:
+                    kw_context = iter(keywords)
+                    name = next(kw_context)
+                    symbol = Symbol(token=Token(type_=name, lexeme=name,begin_position=None, line_position=None), context_level=0)
+                    self.contexts.append({f'{name}':SymbolTable(name=symbol.name,symbol=symbol,type_='in_built')})
+                    self.global_symbols[symbol] = {symbol:{}}
             except StopIteration:
                 print("Task completed: Inserting keywords into global symbol table!")
             
@@ -58,9 +57,9 @@ class SymbolTable:
 
     def push_context(self):
         context_name = self.symbol.name 
-        self.contexts.append(SymbolTable(name=f'{self.symbol.name}', symbol=self.symbol,type_=self.symbol.type_))
+        self.contexts.append({'context_name':SymbolTable(name=f'{context_name}', symbol=self.symbol,type_=self.symbol.type_)})
         self.context_names.append(context_name) if context_name else None
-        self.global_symbols[self.symbol] = self.contexts[-1] #type_: ignore
+        self.global_symbols[self.symbol] = self.contexts[-1]
 
     def pop_context(self):
         if len(self.contexts) > 1:
@@ -71,8 +70,8 @@ class SymbolTable:
 
     def define(self, name: str, symbol: Symbol):
         current_context = self.contexts[-1][self.context_names[-1]]
-        if name not in current_context: #type_: ignore
-            current_context[name] = symbol #type_: ignore
+        if name not in current_context:
+            current_context[name] = symbol 
         else:
             raise NameError(f"Symbol '{name}' already defined in current context")
 
@@ -111,6 +110,57 @@ class SymbolTable:
         """Returns a flattened view of all symbols in all contexts."""
         all_contexts = [context[next(iter(context))] for context in self.contexts]
         return ChainMap(*reversed(all_contexts))
+    
+    def __getitem__(self, key: str | Symbol) -> Symbol | SymbolTable | None:
+        """
+        Retrieves a symbol or nested symbol table from the current context or searches through parent contexts.
+
+        Args:
+            key (str or Symbol): The key to search for. Can be a symbol name (str) or a Symbol object.
+
+        Returns:
+            Symbol or SymbolTable: The retrieved symbol or nested symbol table, or None if not found.
+
+        Raises:
+            KeyError: If the key is not found in any context.
+        """
+        if not isinstance(key, (str, Symbol)):
+            raise TypeError("SymbolTable key must be a string or Symbol object")
+
+        # Search current context for the key
+        current_context = self.contexts[-1][self.context_names[-1]]
+        if key in current_context['symbols']:
+            return current_context['symbols'][key]
+
+        # Search parent contexts if key not found
+        for context_dict in reversed(self.contexts[:-1]):
+            for context_name, context in context_dict.items():
+                if key in context['symbols']:
+                    return context['symbols'][key]
+
+        # Raise an error if key is not found in any context
+        raise KeyError(f"Symbol '{key}' not found in any symbol table context")
+
+    def __setitem__(self, key: str | Symbol, value: Dict[str | Symbol, Any] | SymbolTable):
+        """
+        Sets a symbol or nested symbol table in the current context.
+
+        Args:
+            key (str or Symbol): The key to set. Can be a symbol name (str) or a Symbol object.
+            value (Symbol or SymbolTable): The value to set. Can be a Symbol or a nested SymbolTable.
+
+        Raises:
+            KeyError: If the key is already defined in the current context.
+        """
+        if not isinstance(key, (str, Symbol)):
+            raise TypeError("SymbolTable key must be a string or Symbol object")
+
+        # Set the value in the current context
+        current_context = self.contexts[-1][self.context_names[-1]]
+        if key in current_context:
+            raise KeyError(f"Symbol '{key}' already defined in current context")
+        current_context[key] = value
+
 
     def __str__(self):
         all_contexts = [context[next(iter(context))] for context in self.contexts]
