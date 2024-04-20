@@ -1,9 +1,11 @@
+from typing import Any, Literal
 class Token:
-    def __init__(self, type_, lexeme:int|None, begin_position:int|None = None, line_position:int|None = None):
+    def __init__(self, type_:Literal["str"]|str, lexeme:str, begin_position:int|None = None, line_position:int|None = None, symbol_table_ref:Any|None = None):
         self.type = type_
         self.lexeme = lexeme
         self.begin_position = begin_position
         self.line_position = line_position
+        self.symbol_table_ref = symbol_table_ref
     
     def __str__(self) -> str:
         return f'<Type:{self.type}, Lexeme:{self.lexeme}, BeginPosition:{self.begin_position}, LinePosition:{self.line_position}>'
@@ -57,6 +59,7 @@ TRUE     = "TRUE"
 FALSE    = "FALSE"
 CLOCK    = "CLOCK"
 LEN      = "LEN"
+MATH     = "MATH"
 
 keywords = {
     "fn":     FUNCTION,
@@ -73,7 +76,9 @@ keywords = {
     "bool": BOOL,
     "len": LEN,
     "clock": CLOCK,
+    "math": MATH,
 }
+
 
 def lookup_ident(ident):
     return keywords.get(ident, IDENT)
