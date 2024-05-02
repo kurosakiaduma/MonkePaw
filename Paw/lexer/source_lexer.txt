@@ -1,11 +1,17 @@
+//this is Group 7's lexer test program
 let x=10;
-let a,b,c;
-//x+c=10;
+let a,b,c //this is an example of an inline comment;
+//x+c=10; this is an example of a line that has no effect on the graph
 x+c==10;
 //(x+c)==10;
+
 fn sqrt(a):
+//this is a wrongly defined square root function. 
+//functions utilize curly braces for definitions not full colons
 return math.sqrt(a)
+
 fn sqrt(a){
+//this is the correct definition of function in Monke
 return math.sqrt(a)
 }
 clock.clock();
