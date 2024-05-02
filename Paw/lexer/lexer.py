@@ -1,5 +1,8 @@
-from tokens.tokens import *
+from __future__ import annotations
 from collections import deque
+from Paw.tokens.tokens import *
+
+
 class Lexer:
     def __init__(self, character_stream: str):
         self.character_stream = character_stream
@@ -7,15 +10,15 @@ class Lexer:
         self.line_position = 1
         self.critical = False
         self.ch = ''
-        self.tokens:deque[Token] = deque()
-        self.comment:bool|None = None
+        self.tokens: deque[Token] = deque()
+        self.comment: bool | None = None
 
     # Initialize the lexer
     # read_position is similar to the lookahead
     def read_char(self):
-        if not(self.critical):
+        if not self.critical:
             self.start_position = self.position
-            self.critical =  True
+            self.critical = True
 
         if self.read_position >= len(self.character_stream):
             self.ch = '\0'  # ASCII code for "NULL" character
@@ -28,7 +31,7 @@ class Lexer:
     def skip_whitespace(self):
         while self.ch in ' \t\n\r':
             if self.ch == '\n':
-                self.line_position+=1
+                self.line_position += 1
             self.read_char()
 
     # Peek at the next character without advancing the lexer
@@ -45,51 +48,52 @@ class Lexer:
             self.read_char()
         self.critical = False
         return self.character_stream[self.start_position:self.position]
-    
+
     # Read an string from the character_stream
     def read_string(self):
         self.start_position = self.position + 1  # Skip the opening quote
-        self.position+=1
-        self.read_position+=1
+        self.position += 1
+        self.read_position += 1
 
         while True:
             self.read_char()
             if self.ch == '"':  # End of string
                 lexeme = self.character_stream[self.start_position:self.position]  # Exclude the closing quote    
                 # move current and lookahead forward
-                self.position+=1
-                self.read_position+=1
-                
+                self.position += 1
+                self.read_position += 1
+
                 try:
                     self.ch = self.character_stream[self.position]
                 except IndexError:
                     self.ch = '\0'
-                                    
+
                 break
             elif self.ch == '\0':  # End of file
                 raise ValueError("Unterminated string literal")
         self.critical = False
         return lexeme
-                
+
     # Read a number from the character_stream
     def read_number(self):
         self.start_position = self.position
         hasDot = False
-        while self.ch.isdigit() or self.ch ==".":
+        while self.ch.isdigit() or self.ch == ".":
             if self.ch == ".":
                 hasDot = True
-                if hasDot and not((self.character_stream[self.position-1]).isdigit() and (self.character_stream[self.read_position]).isdigit()):
+                if hasDot and not ((self.character_stream[self.position - 1]).isdigit() and (
+                self.character_stream[self.read_position]).isdigit()):
                     raise ValueError("Invalid float literal!")
             self.read_char()
         self.critical = False
         return self.character_stream[self.start_position:self.position]
 
     # Get the next tokens from the character_stream
-    def next_token(self)-> Token | None:
+    def next_token(self) -> Token | None:
         self.skip_whitespace()
         self.start_position = self.position
         if self.ch == '.':
-            tok =  self.new_token(DOT, self.ch)
+            tok = self.new_token(DOT, self.ch)
         elif self.ch == '=':
             if self.peek_char() == '=':
                 ch = self.ch
@@ -127,8 +131,8 @@ class Lexer:
                         print("STATS\n")
                         print(self.read_position, self.position, len(self.character_stream))
                         print("STATS\n")
-                        
-                        self.line_position+=1
+
+                        self.line_position += 1
                         break
             else:
                 tok = self.new_token(SLASH, self.ch)
@@ -151,7 +155,7 @@ class Lexer:
         elif self.ch == '}':
             tok = self.new_token(RBRACE, self.ch)
         elif self.ch == 0:
-            tok= self.new_token(EOF, "")
+            tok = self.new_token(EOF, "")
         else:
             # if the character is not a special character,
             # then it is an identifier
@@ -185,10 +189,11 @@ class Lexer:
             return None if is_comment else self.new_token(EOF, '')
 
     # Helper method to create a new tokens
-    def new_token(self, token_type:Literal["str"]|str, ch:str):
+    def new_token(self, token_type: Literal["str"] | str, ch: str):
         token = Token(token_type, ch, begin_position=self.start_position, line_position=self.line_position)
         self.tokens.append(token)
         return token
+
 
 # Check if a character is a letter
 def is_letter(ch):
