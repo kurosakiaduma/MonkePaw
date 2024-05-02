@@ -1,9 +1,9 @@
 import getpass, time
-from repl import repl
-from tokens import tokens
-from lexer.lexer import Lexer
-from parser.parser import *
-from parser.LL1 import *
+from Paw.lexer.lexer import Lexer
+from Paw.repl import repl
+from Paw.tokens import tokens
+from Paw.parser.parser import *
+from Paw.parser.LL1 import *
 
 def main():
     username = getpass.getuser()
@@ -12,7 +12,7 @@ def main():
     os.system('cls' if os.name == 'nt' else 'clear') 
 
     monke_logo = """
-  /\/\  
+  /\/\   
  /-  -\ 
 | |__| |
  \_||_/
