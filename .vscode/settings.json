@@ -1,3 +1,7 @@
 {
-    "python.analysis.autoImportCompletions": true
+    "python.analysis.autoImportCompletions": true,
+    "pylint.path": [
+        "[\"C:\\Users\\Tevin\\Documents\\Computer Science\\Compiler Construction\\mini-compiler\\Paw\\paw\\Scripts\\pylint.exe\"]"
+    ],
+    "python.analysis.typeCheckingMode": "basic"
 }
