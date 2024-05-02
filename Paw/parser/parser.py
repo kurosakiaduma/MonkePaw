@@ -9,7 +9,7 @@ class Parser:
         self.token_stream: Iterator = iter(token_stream)
         self.current_token: Token | None = None
         self.next_token: Token | None = next(self.token_stream)
-        self.symbol_table = SymbolTable()
+        self.symbol_table = SymbolTable(None, None, CONTEXT)
         self._consume()
 
     def _consume(self):
