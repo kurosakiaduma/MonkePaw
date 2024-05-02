@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import Any
-from tokens.tokens import *
-
+from Paw.tokens.tokens import *
 
 grammar = {
     'program': [['statement_list']],
     'statement_list': [['statement', 'statement_list'], ['']],
-    'statement': [['let_statement'], ['assign_statement'], ['expression_statement'], ['return_statement'], ['if_statement'], ['print_statement'], ['clock_statement']],
+    'statement': [['let_statement'], ['assign_statement'], ['expression_statement'], ['return_statement'],
+                  ['if_statement'], ['print_statement'], ['clock_statement'], ['custom_context']],
     'let_statement': [['LET', 'IDENT', 'ASSIGN', 'expression', 'SEMICOLON'], ['LET', 'IDENT', 'SEMICOLON']],
     'assign_statement': [['IDENT', 'ASSIGN', 'expression', 'SEMICOLON']],
     'expression_statement': [['expression', 'SEMICOLON']],
@@ -16,8 +16,10 @@ grammar = {
     'print_statement': [['PRINT', 'expression', 'SEMICOLON']],
     'clock_statement': [['CLOCK', 'DOT', 'clock_function', 'LPAREN', 'RPAREN', 'SEMICOLON']],
     'clock_function': [['CLOCK'], ['NOW']],
-    'expression': [['INT'], ['FLOAT'], ['STR'], ['BOOL'], ['IDENT'], ['function_literal'], ['call_expression'], ['prefix_expression'], ['infix_expression'], ['grouped_expression']],
-    'function_literal': [['FUNCTION', 'LPAREN', 'parameters', 'RPAREN', 'LBRACE', 'statement_list', 'optional_return', 'RBRACE']],
+    'expression': [['INT'], ['FLOAT'], ['STR'], ['BOOL'], ['IDENT'], ['function_literal'], ['call_expression'],
+                   ['prefix_expression'],['infix_expression'], ['grouped_expression']],
+    'function_literal': [['FUNCTION', 'LPAREN', 'parameters', 'RPAREN', 'LBRACE', 'statement_list', 'optional_return',
+                          'RBRACE']],
     'call_expression': [['IDENT', 'LPAREN', 'expression_list', 'RPAREN']],
     'expression_list': [['expression', 'COMMA', 'expression_list'], ['expression'], ['']],
     'parameters': [['IDENT', 'COMMA', 'parameters'], ['IDENT'], ['']],
@@ -26,11 +28,12 @@ grammar = {
     'infix_expression': [['expression', 'infix_operator', 'expression']],
     'grouped_expression': [['LPAREN', 'expression', 'RPAREN']],
     'prefix_operator': [['BANG'], ['MINUS']],
-    'infix_operator': [['PLUS'], ['MINUS'], ['ASTERISK'], ['SLASH'], ['LT_EQ'], ['LT'], ['GT_EQ'], ['GT'], ['EQ'], ['NOT_EQ']]
+    'infix_operator': [['PLUS'], ['MINUS'], ['ASTERISK'], ['SLASH'], ['LT_EQ'], ['LT'], ['GT_EQ'], ['GT'], ['EQ'], ['NOT_EQ']],
+    'custom context': [['LPAREN', 'statement_list', 'RPAREN']]
 }
 
 class Node:
-    def __init__(self, token:Token, value:Node|int|str):
+    def __init__(self, token: Token, value: Node | int | str):
         self.token = token
         self.type = token.type
         self.lexeme = token.lexeme
@@ -39,9 +42,10 @@ class Node:
         self.value = value
 
     def __repr__(self):
-        return f"{self.__class__.__name__} (type::= '{self.type}', lexeme::= '{self.lexeme}', value::='{self.value}')"
+        return f"{self.__class__.__name__} (type::= '{self.type}', lexeme::= '{self.lexeme}', value:: ='{self.value}')"
 
-class ProgramNode(Node):
+
+class ProgramNode(Node) :
     def __init__(self, token: Token, statement_list, value):
         super().__init__(token, value)
         self.statement_list = statement_list
@@ -115,7 +119,6 @@ class IdentifierNode(ExpressionNode):
     def __init__(self, token: Token, value):
         super().__init__(token, value)
         self.value = value
-
 class FunctionLiteralNode(ExpressionNode):
     def __init__(self, token: Token, parameters, body, value):
         super().__init__(token, value)
