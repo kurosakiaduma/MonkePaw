@@ -1,0 +1,2 @@
+//this is my comment to be ignored
+if x987 == "thisstring&^*" else y=-50.576 then if _ui = false print "here is my string";
