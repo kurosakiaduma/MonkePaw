@@ -74,7 +74,10 @@ class Parser:
     def let_statement(self):
         name = self.current_token.lexeme
         symbol = Symbol(self.current_token, context_level=(len(self.symbol_table.context_names) - 1))
+        # DEBUG
+        print(f'\nThis is saved symbol from let_stmt {symbol}\n')
         self.symbol_table[symbol] = symbol.__dict__  # Add the symbol to the symbol table
+        print(f'\nThis is saved symbol_table from let_stmt {self.symbol_table}\n')
         self._consume()
         self._consume()
         child = self.expression()
