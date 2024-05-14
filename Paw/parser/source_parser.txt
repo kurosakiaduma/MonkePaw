@@ -1,0 +1,41 @@
+//All programs start in the global context which does not have a parent
+//Contexts can be either custom-named or auto-named using {parent_name}_inner_{no_of_inners+1}
+
+let a;
+let a=10;
+let b=10;
+let c,d;
+
+{ // this is global_inner_1
+let a = 25;
+let c = 15;
+let d = 20
+};
+
+let c=d, d=c;
+
+{//this is global_inner_2
+fn add (a,b){
+print c; 
+return c;
+};};
+
+add(10,15); //this throws an error since add is not defined in the global context
+// an error should be thrown. This would be a semantic error
+
+e = [1,3,5] //this is a deque in our language
+f = [1:1,2:2]//this is a hashmap or a dict in Monke
+print(e,f);
+g = clock.clock();
+print(g) //failure to close a line without a semicolon results in an error
+while (a > 5) {
+print(a);
+a = a - 1;
+};
+
+//Still working on parsing loops but I am almost there once symbol tables are done
+
+for i in f {
+if i == b{
+print(i);
+};};

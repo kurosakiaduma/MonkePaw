@@ -1,0 +1,13 @@
+fn add (x,y) {return x;};
+context mine {
+let a = 10;
+};
+let break;
+//add(10,20);
+let c,d;
+c=4;
+d=10;
+let e = a;
+//let b = add(c,d);
+{let b;
+b=10;};
