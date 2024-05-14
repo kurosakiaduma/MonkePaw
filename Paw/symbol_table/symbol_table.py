@@ -1,24 +1,85 @@
 from __future__ import annotations
+import sys
+import textwrap
 from collections import deque, ChainMap
 from tabulate import tabulate
-from typing import Dict, List
-from Paw.tokens.tokens import *
+from typing import Dict, List, Deque
+from tokens.tokens import MAX_CONTEXT_DEPTH
+from parser.LL1 import *
 
-
+sys.path.append("..")
 # TODO: Add symbols dict to each new symbol table instance as done with global_symbols to enhance lookup
-class Symbol:
-    def __init__(self, token: Token, context_level, body=None):
-        self.create_symbol(token, context_level)
 
-    def create_symbol(self, token: Token, context_level: int) -> bool:
-        self.name = token.lexeme
-        self.type_ = token.type
-        self.line_declared: int | None = token.begin_position
-        self.line_referenced: list = []
+
+class Symbol:
+    def __init__(
+            self,
+            node: ProgramNode | StatementListNode | StatementNode | LetStatementNode |
+                  AssignStatementNode | ExpressionNode | ReturnStatementNode |
+                  IfStatementNode | PrintStatementNode | ClockStatementNode | FunctionLiteralNode | SymbolTable,
+
+            context_level
+    ):
+        self.node = node
+        self.type_ = None
+        self.name = None
+        self.line_declared = None
+        self.line_referenced = None
         self.context_level: int = context_level
-        if self.type_ in (CONTEXT, FUNCTION):
-            self.body = deque([])
+        self.value = None
+        self.errors = []
+        self.create_symbol()
+
+    def create_symbol(self) -> bool:
+        print(f'\n{self.node}\n'
+              f'\n{type(self.node)}\n'
+              f'\n{isinstance(self.node, Node)}\n')
+        if isinstance(self.node, Node):
+            print(f"\nCreating a symbol from Node {self.node}\n")
+            self.name: str = self.node.name
+            self.type_ = self.set_type()
+            if self.type_ == CONTEXT:
+                self.line_declared: str | None = (str(self.node.context_token.line_position) +
+                                                  ':' +
+                                                  str(self.node.context_token.begin_position))
+
+            elif self.node.type == FunctionLiteralNode:
+                self.line_declared: str | None =  (str(self.node.token))
+                pass
+            else:
+                self.line_declared: str | None = (str(self.node.value.line_position) +
+                                                  ':' +
+                                                  str(self.node.value.begin_position))
+            self.line_referenced: list = []
+            self.value = self.node.value if self.node.value else None
+
+        # Handling creating symbols for inner context symbol tables
+        elif isinstance(self.node, SymbolTable):
+            print("\nCreating a symbol from Symbol Table\n")
+            self.name: str = self.node.context_name
+            self.type_ = self.node.__class__.__name__
+            self.line_declared: str | None = (str(self.node.context_token.line_position) +
+                                              ':'+
+                                              str(self.node.context_token.begin_position))
+            self.line_referenced: list = []
+            self.value = self.node if self.node else None
+
+        # Handling situations where the value is empty
+        if self.value is None:
+            pass
+
         return True
+
+    def set_type(self):
+        if self.node.type:
+            self.type_ = self.node.type
+
+        elif self.node.type == ReturnStatementNode:
+            self.type_ = 'FUNCTION DEFINITION'
+        elif self.node.type == StatementListNode:
+            self.type_ = 'CONTEXT'
+
+        return self.type_
 
     def __repr__(self):
         return f"Symbol(name='{self.name}', type_='{self.type_}', context_level={self.context_level})"
@@ -26,255 +87,220 @@ class Symbol:
     def __str__(self):
         return f"Symbol '{self.name}' of type '{self.type_}' at context level {self.context_level}"
 
+
 class SymbolTable:
+    _global_set: True = False
     _instance = None
-    _global_symbol = None
-    _metadata = None
-    _contexts = None
 
     def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        cls._global_symbol = Symbol(Token(GLOBAL, GLOBAL, None,
-                                                             None, None),
-                                                       0,
-                                                       None),
-        print(f"\nINSTANCE: {SymbolTable._instance}\nGLOBAL_ST: {cls.global_symbol_table}\n")
-        if not SymbolTable._metadata:
-            SymbolTable._metadata = dict(name="global",
-                                         symbol=cls._global_symbol,
-                                         type_=CONTEXT,
-                                         _symbol_table=None
-                                         )
-        return instance
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+            cls._parent_table = None  # Reference to parent symbol table (if any)
+            return cls._instance
+        else:
+            return super().__new__(cls)
 
-    @classmethod
+    def __init__(self,
+                 context_name: str | None = None,
+                 context_token: Token | None = None,
+                 parent_table: SymbolTable | None = None):
+
+        if not SymbolTable._global_set:
+            SymbolTable._global_set = True
+            self.context_name = 'global'
+            self.context_token = None
+        elif context_name:
+            self.context_name = context_name
+            self.context_token = context_token
+
+        print(f'\nINITIATED SYMBOL TABLE {self.context_name}'
+              f' {self.context_token}\n')
+
+        self._context_level: int | None = 0 if parent_table is None else \
+            parent_table.context_level + 1
+        self.context_table: deque = deque([{}])
+        self.inners: deque = deque([i for i in range(1, 11, 1)])
+        self._parent_table = parent_table
+
+    def get_contexts(self):
+        return self.context_table
+
     @property
-    def global_symbol_table(cls):
-        return cls._metadata.get("_symbol_table") if cls._metadata else None
-
-    @property
-    def symbol_table(self):
-        return self._metadata.get("_symbol_table") if self._metadata else None
-
-    @symbol_table.setter
-    def symbol_table(self, value):
-        self._symbol_table = value
-        self._metadata['_symbol_table'] = self._symbol_table
-
-    def __init__(self, name: str, symbol: Symbol, type_: str):
-        if not SymbolTable._instance:
-            self.name: str = self._metadata.get("name")
-            self.symbol: Symbol = self._metadata.get("symbol")
-            self.type_: str = self._metadata.get("type_")
-            self._metadata: Dict[str, Dict | str | Symbol] = self._metadata
-            self.symbol_table: Dict[str | Symbol, Dict[str | Symbol, Any] | SymbolTable] = {}
-            self.contexts: List[Dict[str | Symbol, SymbolTable | Dict[str | Symbol, Any]]] = [
-                {f'{self.name}': self._metadata}]
-            self.context_names: List[str] = [self.name]
-            print(f"\nHERE IS SELF.CONTEXTS {self.contexts}\nHERE IS SELF.CONTEXT_NAMES {self.context_names}")
-
-            # CHECK
-            print("\nHere's the global symbol table metadata", SymbolTable._metadata)
-            SymbolTable._instance = True
-            try:
-                print(f"\nINITIATED {self.name} ** {self.symbol} ** {self.type_}")
-                kw_context = iter(keywords)
-                while True:
-                    print(f"\nHere's self symbol table: {self.symbol_table}")
-                    print(f"\nHere's CLASS symbol table: {SymbolTable.global_symbol_table}")
-                    name = next(kw_context)
-                    if name not in ("clock", "for", "if", "print"):
-                        continue
-                    symbol = Symbol(token=Token(type_=name, lexeme=name, begin_position=None, line_position=None),
-                                    context_level=0)
-                    self.contexts.append({f'{name}': SymbolTable(name=symbol.name, symbol=symbol, type_='in_built')})
-                    print(f"\nHere's the global symbol table metadata {SymbolTable._metadata}")
-                    print(f"\nHere's the symbol table {self._symbol_table}\nHere's global ST {self.global_symbol_table}")
-            except StopIteration:
-                print(f"\nTask completed: Inserting keywords into global symbol table!\nCONFIRM\nself symbol{self.symbol_table}"
-                      f"\nself global {self.global_symbol_table}"
-                      f"\nclass global{SymbolTable.global_symbol_table}")
-
-        else:
-            self.name = name
-            self.symbol = symbol
-            self.type_ = type_
-            self._metadata: Dict[str, Dict | str | Symbol] \
-                = {"name": self.name,
-                   "symbol": self.symbol,
-                   "type_": self.type_,
-                   "_symbol_table": {}}
-            self.symbol_table: Dict[str | Symbol, Dict[str | Symbol, Any] | SymbolTable] = {}
-            self.global_symbol_table[self.symbol] = self.symbol_table
-            self.contexts: List[Dict[str | Symbol, SymbolTable | Dict[str | Symbol, Any]]] = [
-                {f'{self.name}': self._metadata}]
-            self.context_names: List[str] = [self.name]
-            print(f"\nHERE IS SELF.CONTEXTS {self.contexts}\nHERE IS CONTEXT NAMES {self.context_names}")
-            print("\nHere's custom the symbol table metadata", self._metadata)
-            print("\nHere's custom the symbol table", self.symbol_table)
-            print(f"\nCHECK UPDATED GLOBAL ST\n{self.global_symbol_table}")
-
-            if type(symbol) == Symbol and symbol.type_ in (CONTEXT, FUNCTION):
-                self.push_context()
-
-    def confirm_allocation(self):
-        pass
-
-    def push_context(self):
-        context_name = self.symbol.name
-        self.contexts.append(
-            {f'{context_name}': SymbolTable(name=f'{context_name}', symbol=self.symbol, type_=self.symbol.type_)})
-        self.context_names.append(context_name) if context_name else None
-        self._metadata[self.symbol] = (self.contexts[-1])[context_name]
-
-    def pop_context(self):
-        if len(self.contexts) > 1:
-            self.contexts.pop()
-            self.context_names.pop()
-        else:
-            raise Exception("Cannot pop the global context")
-
-    def define(self, name: str, symbol: Symbol):
-        print(f'\n*---IN DEFINE---*\nCONTEXTS {self.contexts}\n')
-        current_context = self.contexts[-1][self.context_names[-1]]
-        print(f'\nCURRENT CONTEXT {current_context}\n')
-        if not self.symbol_table.name:
-            current_context[symbol] = dict(value=symbol.__dict__)
-        else:
-            raise NameError(f"Symbol '{name}' already defined in current context")
-
-    def define_function(self, name: str, params: list, body):
-        func_symbol = Symbol(Token(FUNCTION, name), len(self.contexts))
-        self.define(name, func_symbol)
-        # Create new context for function
-        self.push_context(name)
-
-        # Add parameters to function's context
-        for param in params:
-            param_symbol = Symbol(Token(IDENT, param), len(self.contexts))
-            self.define(param, param_symbol)
-
-        # Process function body...
-        # ...
-
-        # Pop function's context when done
-        self.pop_context()
-
-    def lookup(self, name):
-        for context_dict in reversed(self.contexts):
-            print(context_dict)
-            current_context = context_dict[next(iter(context_dict))]
-            if name in current_context:
-                return current_context[name]
-        return None
-
-    def define_global(self, name, symbol):
-        self.symbol_table[name] = symbol
-
-    def lookup_global(self, name):
-        return self._metadata.get(name, None)
-
-    def get_all_symbols(self):
-        """Returns a flattened view of all symbols in all contexts."""
-        all_contexts = [context[next(iter(context))] for context in self.contexts]
-        return ChainMap(*reversed(all_contexts))
-
-    def __getitem__(self, key: str | Symbol) -> Symbol | SymbolTable | None:
+    def context_level(self):
         """
-        Retrieves a symbol or nested symbol table from the current context or searches through parent contexts.
-
-        Args:
-            key (str or Symbol): The key to search for. Can be a symbol name (str) or a Symbol object.
+        Returns the context level of the current symbol table.
 
         Returns:
-            Symbol or SymbolTable: The retrieved symbol or nested symbol table, or None if not found.
+            int: The context level of the current symbol table.
+        """
+        return self._context_level
+
+    def current_context(self):
+        """
+        Returns the current context dictionary of the symbol table.
+
+        Returns:
+            dict: The current context dictionary.
+        """
+        return self.context_table[-1]
+
+    def enter_context(self,
+                      context_name: str | None = None,
+                      context_token: Token | None = None,
+                      ):
+        """
+        Creates and enters a new context within the current symbol table.
+
+        Returns:
+            SymbolTable: The new context as a SymbolTable instance.
+        """
+        new_context = SymbolTable(context_name=context_name,
+                                  context_token=context_token,
+                                  parent_table=self)
+
+        new_context_symbol = Symbol(new_context, self.context_level)
+
+        # Return the new context and its symbol after adding it to the parent context's symbol table
+        self.define(context_name, new_context_symbol)
+        return new_context, new_context_symbol
+
+    def exit_context(self):
+        """
+        Exits the current context of the symbol table.
+
+        Returns:
+            SymbolTable: The parent context as a SymbolTable instance.
 
         Raises:
-            KeyError: If the key is not found in any context.
+            Exception: If attempting to exit the global context.
         """
-        if not isinstance(key, (str, Symbol)):
-            raise TypeError("SymbolTable key must be a string or Symbol object")
+        print(f'\nThis is the child table \n{self}\n')
+        print(f'\nThis is the parent table\n{self._parent_table}\n')
+        print(f'\nCONTEXTS IS: {self.context_table}\n')
+        print(f'\nPARENT CONTEXTS IS: {self._parent_table.context_table}\n')
+        if self._parent_table is None:
+            raise Exception("Cannot pop the global context")
+        return self._parent_table
 
-        # Search current context for the key
-        current_context = self.contexts[-1][self.context_names[-1]]
-        if key in current_context['symbols']:
-            return current_context['symbols'][key]
+    def define(self, name: str, symbol: Symbol):
+        current_context = self.current_context()
+        # print('\nBEFORE DEFINE _contexts and current_context\n'
+        #       f'{self._contexts}\n{repr(current_context)}\n')
+        # print(f'\nBEFORE DEFINE self: {self.context_name}\n')
+        # print(f'{str(self)}\n')
+        # print(f'\nSAVING NAME: {name}\n')
+        # print(f'\nSAVING SYMBOL: {symbol}\n')
+        # print(f'\nSAVING CONTEXT: {current_context}\n')
 
-        # Search parent contexts if key not found
-        for context_dict in reversed(self.contexts[:-1]):
-            for context_name, context in context_dict.items():
-                if key in context['symbols']:
-                    return context['symbols'][key]
+        print(f'\nTHIS IS CURRENT CONTEXT => {current_context}\n')
+        if not isinstance(current_context, dict):
+            raise NameError(f"No active context to define symbol '{name}'")
+        if name in current_context.keys():
+            raise NameError(f"\nSymbol '{name}' '{symbol}' already defined in current context\n"
+                            f"{str(self)}")
+        current_context[name] = symbol
 
-        # Raise an error if key is not found in any context
-        raise KeyError(f"Symbol '{key}' not found in any symbol table context")
+    def get_all_symbols(self):
+        all_symbols = {}
+        for context in self.context_table:
+            if isinstance(context, dict):
+                all_symbols.update(context)
+            elif isinstance(context, SymbolTable):
+                # Handle SymbolTable instances appropriately
+                all_symbols.update({f"{context.context_name}":f'{repr(context)}'})
+            else:
+                print(f"\nWarning: Unable to update all_symbols with context\n"
+                      f"{context}\nas it is not a dictionary.\n")
+        return all_symbols
 
-    def __setitem__(self, key: str | Symbol, value: Dict[str | Symbol, Any] | SymbolTable):
-        """
-        Sets a symbol or nested symbol table in the current context.
+    def lookup(self, name):
+        context = self
+        while context is not None:
+            context_table = context.get_contexts()[-1]
+            if name in context_table:
+                return context[name]
+            else:
+                context = context._parent_table
+        return None
 
-        Args:
-            key (str or Symbol): The key to set. Can be a symbol name (str) or a Symbol object.
-            value (Symbol or SymbolTable): The value to set. Can be a Symbol or a nested SymbolTable.
+    def __getitem__(self, key: str | Symbol) -> Symbol | None:
+        return self.lookup(key)
 
-        Raises:
-            KeyError: If the key is already defined in the current context.
-        """
-        if not isinstance(key, (str, Symbol)):
-            raise TypeError("SymbolTable key must be a string or Symbol object")
-
-        # Set the value in the current context
-        current_context = self.contexts[-1][self.context_names[-1]]
-        if key in current_context:
-            raise KeyError(f"Symbol '{key}' already defined in current context")
-        current_context[key] = value
-
-    def __getattr__(self, name):
-        # Check if a symbol with this name exists in the symbol table
-        symbol_names = [symbol.name for symbol in self.symbol_table.keys()]
-        if name in symbol_names:
-            # Return the symbol value
-            return list(self.symbol_table.values())[symbol_names.index(name)]
-        else:
-            # If the symbol doesn't exist, raise an AttributeError
-            raise AttributeError(f"No symbol named '{name}' in this symbol table")
+    def __setitem__(self, key: str | Symbol, value: Symbol) -> None:
+        self.define(key, value)
 
     def __repr__(self):
-        # Machine-readable representation
-        return f'SymbolTable(name="{self.name}", symbol={self.symbol}, type_="{self.type_}")'
+        return f"SymbolTable({self.context_name})"
 
     def __str__(self):
-        # Get the current symbol table (the first context)
-        current_context = self.contexts[0]
-        immediate_context = current_context[next(iter(current_context))]
+        """
+        Provides a string representation of the symbol table with columns using tabulate.
 
-        # Determine which symbol table to use
-        immediate_context_st = immediate_context.get('_symbol_table') or immediate_context.get('_global_symbol_table')
-        print(f"\nIMMEDIATE CONTEXT ST {immediate_context_st}\n")
-        # Prepare data for the table
+        Returns:
+            str: A string representation of the symbol table with columns for symbol information.
+        """
         table_data = []
-        for symbol, attributes in immediate_context_st.items():
-            # Prepare a row for the table
-            row = [symbol]  # The first column is the symbol
-            print(f"\nSYMBOL {symbol}\n ATTRS {attributes}\n")
-            for attr, value in attributes.items():
-                # The rest of the columns are the attributes of the symbol
-                row.append(value)
+        headers = ["Name", "Type", "Line Declared", "Context Level", "Value"]  # Headers for the table
+
+        # Iterate through all symbols in the symbol table (flattened)
+        for symbol in self.get_all_symbols().values():
+            # print(f'\nHERE IS THE SYMBOL {symbol}\n{type(symbol)}\n\DONE DEBUG\n\n')
+            row = [
+                textwrap.fill(str(symbol.name), width=25),  # Wrap name with max width of 15
+                textwrap.fill(str(symbol.type_), width=20),  # Wrap type with max width of 10
+                str(symbol.line_declared) if symbol.line_declared else "-",  # Handle missing line number
+                str(symbol.context_level),
+                textwrap.fill(str(f'{symbol}')) if symbol.type_ == "SymbolTable" else textwrap.fill(str(symbol.value), width=60),  # Wrap value with max width of 20
+            ]
             table_data.append(row)
 
-        # Create a table
-        headers = ["Symbol"] + list(attributes.keys())  # The headers are "Symbol" and the attribute names
-        table = tabulate(table_data, headers=headers, tablefmt="pretty")
+        return tabulate(table_data, headers=headers, tablefmt="grid")
 
-        return table
-
-
-# Example usage:
-symbol_table = SymbolTable(None, None, CONTEXT)
-symbol_table.define_global('five', Symbol(Token(STR, 'five', 0, 1), 0))
-print("\nHERE I PRINT INSTANCE", symbol_table)
-symbol_table.define('x', Symbol(Token(INT, "x", 2, 1), 0))
-symbol_table.define('y', Symbol(Token(INT, 'y', 2, 2), 1))
-print(symbol_table.lookup('x'))  # Output: Symbol(name='x', type_='int', context_level=1)
-print(symbol_table.lookup('five'))  # Output: Symbol(name='five', type_='int', context_level=0)
-print(symbol_table)
+# # Example usage:
+#
+# # 'five';
+# five_token = Token(STR, 'five', 0, 0, None)
+# five_node = StringLiteralNode(five_token, None)
+#
+# five_symbol = Symbol(StringLiteralNode(five_token,
+#                                        five_node),
+#                      0)
+#
+# # x = 5;
+# x_token = Token(IDENT,'x', 0, 1, None)
+# assign_token_one = Token(ASSIGN, ASSIGN, 0, 3, None)
+# num_five_token = Token(INT, '5', 0, 5, None)
+#
+# # y = 10;
+# y_token = Token(IDENT,'y', 0, 1, None)
+# assign_token_two = Token(ASSIGN, ASSIGN, 0, 3, None)
+# num_ten_token = Token(INT, '10', 0, 5, None)
+#
+# x_symbol = Symbol(AssignStatementNode(assign_token_one,
+#                                       x_token.lexeme,
+#                                       IntegerLiteralNode(
+#                                           num_five_token,
+#                                           None),
+#                                       ),
+#                   0)
+#
+# y_symbol = Symbol(AssignStatementNode(assign_token_two,
+#                                       y_token.lexeme,
+#                                       IntegerLiteralNode(
+#                                           num_ten_token,
+#                                           None),
+#                                       ),
+#                   0)
+#
+# symbol_table = SymbolTable()
+# symbol_table.enter_context()
+# print(f"\nCURRENT SYMBOL TABLE\n{symbol_table}\n")
+# symbol_table.define('five', five_symbol)
+# print("\nHERE I PRINT THE INITIAL SYMBOL TABLE\n", symbol_table)
+#
+# symbol_table.define('x',x_symbol)
+# symbol_table.define('y', y_symbol)
+#
+# print(symbol_table.lookup('x'))  # Output: Symbol(name='x', type_='int', context_level=1)
+# print(symbol_table.lookup('five'))  # Output: Symbol(name='five', type_='int', context_level=0)
+# print(symbol_table)
