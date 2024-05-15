@@ -11,3 +11,7 @@ let e = a;
 //let b = add(c,d);
 {let b;
 b=10;};
+
+if true {
+print(a);
+};

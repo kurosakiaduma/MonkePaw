@@ -1,1 +1,12 @@
-fn ops () {return (5/5) * (5 / 5);};
+a = 10;
+b = 15;
+let c;
+
+c = a + b * a / b; // Answer should be 20 in this case
+
+if a > b {
+print(a);
+}
+else if b < a {
+print(b);
+};
