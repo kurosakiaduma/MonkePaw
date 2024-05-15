@@ -7,13 +7,13 @@ class Node:
     def __init__(self, token: Token, value: Node | Deque | Dict | int | str | bool | float | None):
         self.token = token
         self.type = token.type
-        self.lexeme = token.lexeme
+        self.name = token.lexeme
         self.begin_position = token.begin_position
         self.line_position = token.line_position
         self.value = value
 
     def __repr__(self):
-        return f"{self.__class__.__name__} (type::= '{self.type}', lexeme::= '{self.lexeme}', value:: ='{self.value}')"
+        return f"{self.__class__.__name__} (type::= '{self.type}', name::= '{self.name}', value:: ='{self.value}')"
 
 
 class ProgramNode(Node):
@@ -59,25 +59,24 @@ class AssignStatementNode(StatementNode):
 
 
 class ExpressionStatementNode(StatementNode):
-    def __init__(self, token: Token, expression, value):
+    def __init__(self, token: Token, value):
         super().__init__(token, value)
-        self.expression = expression
+        self.value = value
 
 
 class IfStatementNode(StatementNode):
-    def __init__(self, token: Token, condition, consequence, alternative, value,
-                 else_clause: ElseClauseNode | None = None):
+    def __init__(self, token: Token,
+                 condition: ExpressionStatementNode,
+                 consequence: Node,
+                 else_clause: ExpressionStatementNode | None = None,
+                 alternative: Node | None = None,
+                 value: Node | None = None,
+                 ):
         super().__init__(token, value)
         self.condition = condition
         self.consequence = consequence
-        self.alternative = alternative
         self.else_clause = else_clause
-
-
-class ElseClauseNode(Node):
-    def __init__(self, token: Token, statement_list, value):
-        super().__init__(token, value)
-        self.statement_list = statement_list
+        self.alternative = alternative
 
 
 class PrintStatementNode(StatementNode):
@@ -151,6 +150,14 @@ class FunctionLiteralNode(ExpressionNode):
         super().__init__(token, value)
         self.parameters = parameters
         self.body = body
+
+    def __repr__(self):
+        return f"\n{self.__class__.__name__} " \
+               f"(type::= '{self.type}', " \
+               f"name::= '{self.name}'," \
+               f"parameters::='{self.parameters}' \n" \
+               f"body:: ='{self.body} \n'" \
+               f"return::='{self.value}'\n)"
 
 
 class CallExpressionNode(ExpressionNode):
@@ -337,13 +344,7 @@ grammar = {
     ],
 
     IfStatementNode: [
-        [IF, LPAREN, ExpressionNode, RPAREN, LBRACE, StatementListNode, RBRACE, ElseClauseNode],
-    ],
-
-    ElseClauseNode: [
-        [ELSE, LBRACE, StatementListNode, RBRACE],
-        [ELSE, IfStatementNode],
-        [],  # This represents the absence of an else or else if clause.
+        [IF, LPAREN, ExpressionNode, RPAREN, LBRACE, StatementListNode, RBRACE, ExpressionStatementNode],
     ],
 
     PrintStatementNode: [
@@ -422,7 +423,8 @@ grammar = {
     ],
 
     CustomContextNode: [
-        [LBRACE, StatementListNode, RBRACE]
+        [LBRACE, StatementListNode, RBRACE],
+        [CONTEXT, IDENT, LBRACE, StatementListNode, RBRACE],
     ],
 
 }
