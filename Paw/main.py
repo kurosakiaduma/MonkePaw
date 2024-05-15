@@ -1,26 +1,31 @@
-import getpass, time
-from Paw.lexer.lexer import Lexer
-from Paw.repl import repl
-from Paw.tokens import tokens
-from Paw.parser.parser import *
-from Paw.parser.LL1 import *
+import getpass
+import time
+import sys
+from lexer.lexer import Lexer
+from repl import repl
+from tokens import tokens
+from parser.parser import *
+from parser.LL1 import *
+
+sys.path.append("..")
+
 
 def main():
     username = getpass.getuser()
 
     import os
-    os.system('cls' if os.name == 'nt' else 'clear') 
+    os.system('cls' if os.name == 'nt' else 'clear')
 
-    monke_logo = """
-  /\/\   
- /-  -\ 
-| |__| |
- \_||_/
- / /\ \  
-|/ /  \ \
-\ \   / /
- \_\_/_/
-    """
+    monke_logo = ("\n"
+                  "  /\\/\\   \n"
+                  " /-  -\\ \n"
+                  "| |__| |\n"
+                  " \\_||_/\n"
+                  " / /\\ \\  \n"
+                  "|/ /  \\ \\n"
+                  "\\ \\   / /\n"
+                  " \\_\\_/_/\n"
+                  " ")
 
     print(monke_logo)
     print(f"Hello, {username}! Welcome to the Monke compiler!")
@@ -39,7 +44,7 @@ def main():
                     print(content)
                 l = Lexer(character_stream=content)
                 start_time = time.time()
-                
+
                 while True:
                     tok = l.next_token()
                     try:
@@ -48,9 +53,9 @@ def main():
                         print(f'{tok}\n')
                     except AttributeError:
                         continue
-                
+
                 end_time = time.time()
-                print(f"Total runtime is {round(end_time-start_time,8)}\n")
+                print(f"Total runtime is {round(end_time - start_time, 8)}\n")
 
             except FileNotFoundError:
                 print("Error: File not found.")
@@ -68,9 +73,11 @@ def main():
                 # Create a parser and start parsing
                 p = Parser(l.tokens)  # Pass the tokens deque to the parser
                 ast = p.parse()  # Call the parser's parse method
-                print(ast)  # Print the AST for debugging
-            except (UnboundLocalError, ReferenceError):
-                print("Scan your source code to generate some tokens first. Use 'keywords' command to find out how\n")
+                print(f'\nHERE IS THE AST\n{ast}\n')  # Print the AST for debugging
+            except (UnboundLocalError, ReferenceError) as e:
+                print(
+                    f"\n{e}\nScan your source code to generate some tokens first. "
+                    f"Use 'keywords' command to find out how\n")
         elif command in ["eval_tokens", "et"]:
             while True:
                 inp = (input("(Token Evaluator) Enter position> "))
@@ -91,6 +98,11 @@ def main():
                     print("Out of bounds of AST")
                 if inp != 'q':
                     break
+        elif command in ["show symbol table", "sst"]:
+            try:
+                print(p.symbol_table)
+            except UnboundLocalError:
+                print("\nPlease parse tokens before displaying Symbol Table")
         elif command == "keywords":
             print("Reserved Keywords:")
             for keyword in tokens.keywords.keys():
@@ -125,6 +137,7 @@ Available Commands:
             break
         else:
             print("Invalid command. Enter 'help' for options.")
+
 
 if __name__ == "__main__":
     main()
