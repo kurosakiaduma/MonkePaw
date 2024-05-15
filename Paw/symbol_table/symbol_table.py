@@ -35,18 +35,28 @@ class Symbol:
               f'\n{type(self.node)}\n'
               f'\n{isinstance(self.node, Node)}\n')
         if isinstance(self.node, Node):
-            print(f"\nCreating a symbol from Node {self.node}\n")
+            print(f"\nCreating a symbol from Node\n {self.node}\n{self.node.__class__.__name__}\n")
             self.name: str = self.node.name
             self.type_ = self.set_type()
             if self.type_ == CONTEXT:
+                print(f"\nCreating a symbol from ContextToken\n {self.node.context_token}\n")
                 self.line_declared: str | None = (str(self.node.context_token.line_position) +
                                                   ':' +
                                                   str(self.node.context_token.begin_position))
 
-            elif self.node.type == FunctionLiteralNode:
-                self.line_declared: str | None =  (str(self.node.token))
+            elif self.node.__class__.__name__ == 'FunctionLiteralNode':
+                print(f"\nCreating a symbol from Token\n {self.node.token}\n")
+                self.line_declared: str | None = (str(self.node.token))
                 pass
+            elif self.node.__class__.__name__ == 'AssignStatementNode':
+                print(f"\nCreating a symbol from Node.Value.Token\n {self.node.value}\n")
+                print(f"\nCreating a symbol from Node.Value.Token\n {self.node.token}\n")
+                print(f"\nCreating a symbol from Node.Value.Token\n {self.node.value.token}\n")
+                self.line_declared: str | None = (str(self.node.value.token.line_position) +
+                                                  ':' +
+                                                  str(self.node.value.token.begin_position))
             else:
+                print(f"\nCreating a symbol from NodeValue\n {self.node.value}\n")
                 self.line_declared: str | None = (str(self.node.value.line_position) +
                                                   ':' +
                                                   str(self.node.value.begin_position))
@@ -55,7 +65,7 @@ class Symbol:
 
         # Handling creating symbols for inner context symbol tables
         elif isinstance(self.node, SymbolTable):
-            print("\nCreating a symbol from Symbol Table\n")
+            print(f"\nCreating a symbol from Symbol Table named {self.node.context_name}\n")
             self.name: str = self.node.context_name
             self.type_ = self.node.__class__.__name__
             self.line_declared: str | None = (str(self.node.context_token.line_position) +
@@ -73,7 +83,6 @@ class Symbol:
     def set_type(self):
         if self.node.type:
             self.type_ = self.node.type
-
         elif self.node.type == ReturnStatementNode:
             self.type_ = 'FUNCTION DEFINITION'
         elif self.node.type == StatementListNode:
@@ -184,21 +193,35 @@ class SymbolTable:
 
     def define(self, name: str, symbol: Symbol):
         current_context = self.current_context()
-        # print('\nBEFORE DEFINE _contexts and current_context\n'
-        #       f'{self._contexts}\n{repr(current_context)}\n')
-        # print(f'\nBEFORE DEFINE self: {self.context_name}\n')
-        # print(f'{str(self)}\n')
-        # print(f'\nSAVING NAME: {name}\n')
-        # print(f'\nSAVING SYMBOL: {symbol}\n')
-        # print(f'\nSAVING CONTEXT: {current_context}\n')
+        print('\nBEFORE DEFINE _contexts and current_context\n'
+              f'{self.context_table}\n{repr(current_context)}\n')
+        print(f'\nBEFORE DEFINE self: {self.context_name}\n')
+        print(f'{str(self)}\n')
+        print(f'\nSAVING NAME: {name}\n')
+        print(f'\nSAVING SYMBOL: {symbol}\n')
+        print(f'\nSAVING CONTEXT: {current_context}\n')
 
         print(f'\nTHIS IS CURRENT CONTEXT => {current_context}\n')
+
         if not isinstance(current_context, dict):
             raise NameError(f"No active context to define symbol '{name}'")
+
         if name in current_context.keys():
-            raise NameError(f"\nSymbol '{name}' '{symbol}' already defined in current context\n"
-                            f"{str(self)}")
+            answer = ""
+            while answer not in ['Y', 'N']:
+                answer = input(f"\nSymbol '{name}' '{symbol}' already defined in current context\n"
+                               f"\nEnter Y if you intend to redefine the symbol {name}"
+                               f"\nelse enter N to not save this new symbol and"
+                               f" continue parsing with an erroneous assignment\n"
+                               f"{str(self)}")
+                if answer == 'Y':
+                    break
+                elif answer == 'N':
+                    return None
+
         current_context[name] = symbol
+        print(f'\nUpdated Symbol table f{self.context_name}\n'
+              f'{self}\n')
 
     def get_all_symbols(self):
         all_symbols = {}
@@ -214,14 +237,14 @@ class SymbolTable:
         return all_symbols
 
     def lookup(self, name):
-        context = self
-        while context is not None:
-            context_table = context.get_contexts()[-1]
-            if name in context_table:
-                return context[name]
-            else:
-                context = context._parent_table
-        return None
+        context = self.current_context()
+        if name in context:
+            return context[name], None
+        elif self._parent_table:
+            return self._parent_table.lookup(name)  # Delegate to the parent context
+        else:
+            error_message = f"Symbol '{name}' not found"
+            return None, error_message
 
     def __getitem__(self, key: str | Symbol) -> Symbol | None:
         return self.lookup(key)
