@@ -16,6 +16,8 @@ class Token:
     def __repr__(self) -> str:
         return f'<Type:{self.type}, Lexeme:{self.lexeme}, BeginPosition:{self.begin_position}, LinePosition:{self.line_position}>'
 
+# context depth restriction
+MAX_CONTEXT_DEPTH = 5
 
 # token types
 ILLEGAL = "ILLEGAL"
@@ -68,6 +70,7 @@ LEN = "LEN"
 MATH = "MATH"
 
 keywords = {
+    "context": CONTEXT,
     "fn": FUNCTION,
     "let": LET,
     "print": PRINT,
