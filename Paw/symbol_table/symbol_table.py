@@ -55,7 +55,7 @@ class Symbol:
                 self.line_declared: str | None = (str(self.node.value.token.line_position) +
                                                   ':' +
                                                   str(self.node.value.token.begin_position))
-            elif self.node.__class__.__name__ == 'LetStatementNode':
+            elif self.node.__class__.__name__ in ['LetStatementNode', 'IdentifierNode']:
                 print(f"\nCreating a symbol from Node.Value.Token\n {self.node.token}\n")
                 self.line_declared: str | None = (str(self.node.token.line_position) +
                                                   ':' +
@@ -219,9 +219,9 @@ class SymbolTable:
                                f"\nelse enter N to not save this new symbol and"
                                f" continue parsing with an erroneous assignment\n"
                                f"{str(self)}")
-                if answer == 'Y':
+                if answer.split('\n')[0] == 'Y':
                     break
-                elif answer == 'N':
+                elif answer.split('\n')[0] == 'N':
                     return None
 
         current_context[name] = symbol
