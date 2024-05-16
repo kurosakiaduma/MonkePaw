@@ -1,6 +1,9 @@
 from __future__ import annotations
+
+from collections import deque
 from typing import Deque, Dict
 from Paw.tokens.tokens import *
+from Paw.symbol_table.symbol_table import *
 
 
 class Node:
@@ -100,7 +103,11 @@ class CustomContextNode(Node):
 
 
 class ExpressionNode(Node):
-    pass
+    def __init__(self, token, value, _type: str):
+        super().__init__(token, value)
+        self.token = token
+        self.value = value
+        self._type = _type
 
 
 class ExpressionList(Node):
@@ -111,39 +118,49 @@ class ExpressionList(Node):
 
 class IntegerLiteralNode(ExpressionNode):
     def __init__(self, token: Token, value):
-        super().__init__(token, value)
+        self._type = INT
+        super().__init__(token, value, self._type)
         self.value = value
 
 
 class FloatLiteralNode(ExpressionNode):
     def __init__(self, token: Token, value):
-        super().__init__(token, value)
+        self._type = FLOAT
+        super().__init__(token, value, self._type)
         self.value = value
 
 
 class StringLiteralNode(ExpressionNode):
     def __init__(self, token: Token, value):
-        super().__init__(token, value)
+        self._type = STR
+        super().__init__(token, value, self._type)
         self.value = value
 
 
 class BooleanLiteralNode(ExpressionNode):
     def __init__(self, token: Token, value):
-        super().__init__(token, value)
+        self._type = BOOL
+        super().__init__(token, value, self._type)
         self.value = value
 
 
 class IdentifierNode(ExpressionNode):
     def __init__(self, token: Token, value):
-        super().__init__(token, value)
         self.name = token.lexeme
+        self._type = IDENT
+        super().__init__(token, value, self._type)
         self.value = value
 
 
 class FunctionLiteralNode(ExpressionNode):
-    def __init__(self, token: Token, parameters: ParametersNode, body: StatementListNode,
-                 value: ReturnStatementNode):
-        super().__init__(token, value)
+    def __init__(self, token: Token, parameters: ParametersNode,
+                 body: StatementListNode,
+                 return_node: ReturnStatementNode,
+                 value: Any | Node | None = None,
+                 ):
+        self._type = FUNCTION
+        super().__init__(token, value, self._type)
+        self._return_type = return_node.expression._type
         self.parameters = parameters
         self.body = body
         self._return_type: Node | None = None
@@ -157,36 +174,49 @@ class FunctionLiteralNode(ExpressionNode):
                f"return::='{self._return_type}'\n"
 
 
-class CallExpressionNode(ExpressionNode):
-    def __init__(self, token: Token, function: FunctionLiteralNode, arguments: ArgumentsListNode,
-                 value: Node | int | str | None = None):
-        super().__init__(token, value)
-        self.function = function
-        self.arguments = arguments
-        self.value = value
+class ParameterNode(Node):
+    def __init__(self, token: Token, child: Node, position: int):
+        super().__init__(token, None)
+        self.child = child
+        self.position = position
 
 
 class ParametersNode(Node):
-    def __init__(self, token: Token, parameters: Deque[IdentifierNode]):
+    def __init__(self, token: Token, parameters: Deque[Node]):
         super().__init__(token, parameters)
         self.parameters = parameters
 
 
+class CallExpressionNode(ExpressionNode):
+    def __init__(self, token: Token, function: FunctionLiteralNode, arguments: ArgumentsListNode,
+                 symbol_table: SymbolTable,
+                 value: Node | int | str | float | bool | None = None):
+        self.function_node = function
+        self.name = f'\ncall_{self.function_node.name}\n'
+        self._type = self.name
+        super().__init__(token, value, self._type)
+        self.arguments = arguments
+        self.value = value
+        self.symbol_table = symbol_table
+
+
 class ArgumentsListNode(Node):
-    def __init__(self, token: Token, arguments: Deque[ExpressionNode]):
+    def __init__(self, token: Token, arguments: Deque[ExpressionNode | None] = deque([])):
         super().__init__(token, arguments)
         self.arguments = arguments
 
 
 class ReturnStatementNode(StatementNode):
-    def __init__(self, token: Token, expression: ExpressionNode, value: Node | None = None):
+    def __init__(self, token: Token, expression: ExpressionNode,
+                 value: Any | Node | None = None):
         self.expression: ExpressionNode = expression
         self.value = value
         super().__init__(token, self.value)
 
 
 class PrefixExpressionNode(ExpressionNode):
-    def __init__(self, token, operator, left: Any, right: Node, value: Node | None = None):
+    def __init__(self, token, operator, left: Any, right: Node,
+                 value: Any | Node | None = None):
         super().__init__(token, value)
         self.operator = operator
         self.left = left
@@ -195,7 +225,8 @@ class PrefixExpressionNode(ExpressionNode):
 
 
 class InfixOperatorNode(Node):
-    def __init__(self, token: Token, operator: str | Node, left: Node = None, right: Node = None, value=None):
+    def __init__(self, token: Token, operator: str | Node, left: Node = None, right: Node = None,
+                 value: Any | Node | None = None):
         super().__init__(token, value)
         self.value = value
         self.left = left
@@ -341,123 +372,123 @@ class PrefixOperatorNode(Node):
         self.left = left
         self.right = right
 
-
-grammar = {
-    ProgramNode: [
-        [StatementListNode],
-    ],
-
-    StatementListNode: [
-        [StatementNode],
-        [StatementNode, StatementListNode],
-    ],
-
-    StatementNode: [
-        [LetStatementNode],
-        [AssignStatementNode],
-        [ExpressionStatementNode],
-        [ReturnStatementNode],
-        [IfStatementNode],
-        [PrintStatementNode],
-        [ClockStatementNode],
-        [CustomContextNode],
-    ],
-
-    LetStatementNode: [
-        [LET, IdentifierNode, ASSIGN, ExpressionNode, SEMICOLON],
-        [LET, IdentifierNode, SEMICOLON],
-    ],
-
-    AssignStatementNode: [
-        [IdentifierNode, ASSIGN, ExpressionNode, SEMICOLON],
-    ],
-
-    ExpressionStatementNode: [
-        [ExpressionNode, SEMICOLON],
-    ],
-
-    ReturnStatementNode: [
-        [RETURN, ExpressionNode, SEMICOLON],
-    ],
-
-    IfStatementNode: [
-        [IF, LPAREN, ConditionNode, RPAREN, LBRACE, ConsequenceNode, RBRACE, AlternativeNode],
-    ],
-
-    PrintStatementNode: [
-        [PRINT, ExpressionNode, SEMICOLON],
-    ],
-
-    ClockStatementNode: [
-        [CLOCK, DOT, ClockFunctionNode, LPAREN, RPAREN, SEMICOLON],
-    ],
-
-    ClockFunctionNode: [
-        [CLOCK],
-        ["NOW"],
-    ],
-
-    ExpressionNode: [
-        [IntegerLiteralNode],
-        [FloatLiteralNode],
-        [StringLiteralNode],
-        [BooleanLiteralNode],
-        [IdentifierNode],
-        [FunctionLiteralNode],
-        [CallExpressionNode],
-        [PrefixOperatorNode],
-        [InfixOperatorNode],
-        [GroupedExpressionNode],
-    ],
-
-    FunctionLiteralNode: [
-        [FUNCTION, LPAREN, ParametersNode, RPAREN, LBRACE, StatementListNode, ReturnStatementNode, RBRACE],
-    ],
-
-    CallExpressionNode: [
-        [IdentifierNode, LPAREN, ArgumentsListNode, RPAREN],
-    ],
-
-    ExpressionList: [
-        [ExpressionNode, ExpressionList],
-        [ExpressionNode],
-        [],
-    ],
-
-    ParametersNode: [
-        [IdentifierNode, ParametersNode],
-        [IdentifierNode]
-    ],
-
-    InfixOperatorNode: [
-        [ExpressionNode, InfixOperatorNode, ExpressionNode],
-    ],
-
-    GroupedExpressionNode: [
-        [LPAREN, ExpressionNode, RPAREN],
-    ],
-
-    PrefixOperatorNode: [
-        [BANG],
-        [MINUS],
-    ],
-
-    InfixOperatorNode: [
-        [PLUS],
-        [MINUS],
-        [ASTERISK],
-        [SLASH],
-        [LT_EQ],
-        [LT],
-        [GT_EQ],
-        [GT],
-        [EQ],
-        [NOT_EQ],
-    ],
-
-    CustomContextNode: [
-        [LBRACE, StatementListNode, RBRACE],
-        [CONTEXT, IDENT, LBRACE, StatementListNode, RBRACE],
-    ],
-
-}
+#
+# grammar = {
+#     ProgramNode: [
+#         [StatementListNode],
+#     ],
+#
+#     StatementListNode: [
+#         [StatementNode],
+#         [StatementNode, StatementListNode],
+#     ],
+#
+#     StatementNode: [
+#         [LetStatementNode],
+#         [AssignStatementNode],
+#         [ExpressionStatementNode],
+#         [ReturnStatementNode],
+#         [IfStatementNode],
+#         [PrintStatementNode],
+#         [ClockStatementNode],
+#         [CustomContextNode],
+#     ],
+#
+#     LetStatementNode: [
+#         [LET, IdentifierNode, ASSIGN, ExpressionNode, SEMICOLON],
+#         [LET, IdentifierNode, SEMICOLON],
+#     ],
+#
+#     AssignStatementNode: [
+#         [IdentifierNode, ASSIGN, ExpressionNode, SEMICOLON],
+#     ],
+#
+#     ExpressionStatementNode: [
+#         [ExpressionNode, SEMICOLON],
+#     ],
+#
+#     ReturnStatementNode: [
+#         [RETURN, ExpressionNode, SEMICOLON],
+#     ],
+#
+#     IfStatementNode: [
+#         [IF, LPAREN, ConditionNode, RPAREN, LBRACE, ConsequenceNode, RBRACE, AlternativeNode],
+#     ],
+#
+#     PrintStatementNode: [
+#         [PRINT, ExpressionNode, SEMICOLON],
+#     ],
+#
+#     ClockStatementNode: [
+#         [CLOCK, DOT, ClockFunctionNode, LPAREN, RPAREN, SEMICOLON],
+#     ],
+#
+#     ClockFunctionNode: [
+#         [CLOCK],
+#         ["NOW"],
+#     ],
+#
+#     ExpressionNode: [
+#         [IntegerLiteralNode],
+#         [FloatLiteralNode],
+#         [StringLiteralNode],
+#         [BooleanLiteralNode],
+#         [IdentifierNode],
+#         [FunctionLiteralNode],
+#         [CallExpressionNode],
+#         [PrefixOperatorNode],
+#         [InfixOperatorNode],
+#         [GroupedExpressionNode],
+#     ],
+#
+#     FunctionLiteralNode: [
+#         [FUNCTION, LPAREN, ParametersNode, RPAREN, LBRACE, StatementListNode, ReturnStatementNode, RBRACE],
+#     ],
+#
+#     CallExpressionNode: [
+#         [IdentifierNode, LPAREN, ArgumentsListNode, RPAREN],
+#     ],
+#
+#     ExpressionList: [
+#         [ExpressionNode, ExpressionList],
+#         [ExpressionNode],
+#         [],
+#     ],
+#
+#     ParametersNode: [
+#         [IdentifierNode, ParametersNode],
+#         [IdentifierNode]
+#     ],
+#
+#     InfixOperatorNode: [
+#         [ExpressionNode, InfixOperatorNode, ExpressionNode],
+#     ],
+#
+#     GroupedExpressionNode: [
+#         [LPAREN, ExpressionNode, RPAREN],
+#     ],
+#
+#     PrefixOperatorNode: [
+#         [BANG],
+#         [MINUS],
+#     ],
+#
+#     InfixOperatorNode: [
+#         [PLUS],
+#         [MINUS],
+#         [ASTERISK],
+#         [SLASH],
+#         [LT_EQ],
+#         [LT],
+#         [GT_EQ],
+#         [GT],
+#         [EQ],
+#         [NOT_EQ],
+#     ],
+#
+#     CustomContextNode: [
+#         [LBRACE, StatementListNode, RBRACE],
+#         [CONTEXT, IDENT, LBRACE, StatementListNode, RBRACE],
+#     ],
+#
+# }

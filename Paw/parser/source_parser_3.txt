@@ -5,6 +5,16 @@ let c;
 c = a + b * a / b; // Answer should be 20 in this case
 let d;
 d = 2 * (2 + 2) / 2;
+
+fn add (x,y){
+let a;
+return (a = x + y);
+};
+
+add(a,b);
+add(5,10);
+print(add(c,d));
+
 //if a > b {
 //print(a);
 //}

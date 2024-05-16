@@ -4,7 +4,8 @@ from typing import Iterator
 from .LL1 import *
 from symbol_table.symbol_table import SymbolTable
 from symbol_table.symbol_table import Symbol
-import pygr
+
+from .p_err import ParseError
 
 sys.path.append("..")
 # Initialize the global symbol table
@@ -346,13 +347,17 @@ class Parser:
         while self.current_token.type != SEMICOLON:
             if operator_stack or output_stack:
                 parsed_start = True
-            print(f'\n{self.current_token}\n'
-                  f'\nSHUNTING ON TOP')
+            print(f'\nCURRENT TOKEN -> {self.current_token}\n'
+                  f'\nNEXT TOKEN -> {self.next_token}\n'
+                  f'\nSHUNTING ON TOP {self.expression_flag, parsed_start}')
             token = self.current_token
-            if self.next_token.type in [SEMICOLON] and not self.expression_flag:
+
+            if self.next_token.type in [SEMICOLON]:
                 self.expression_flag = None
             else:
                 self.expression_flag = True
+
+            print(f'\nCHANGES TO FLAGS {self.expression_flag, parsed_start}')
 
             if token.type in (INT, FLOAT, STR, BOOL, IDENT):
                 atom = self.parse_primary()
@@ -462,7 +467,7 @@ class Parser:
             self._consume()
 
         except AssertionError as e:
-            self._error(f'{e}')
+            self._error(f'{e}: {function_name} is a Monke keyword! Oop!')
 
         if self.current_token.type == LPAREN:
             if self.function_flag and not self.call_flag:
@@ -476,10 +481,19 @@ class Parser:
 
                 while self.current_token.type != RPAREN:
                     print(
-                        f'\nReading parameter -> {self.current_token}\nParam node parameters {params_node.parameters}\n')
+                        f'\nReading parameter -> {self.current_token}\n'
+                        f'Param node parameters {params_node.parameters}\n')
                     print(f'\nPARAM TYPE {self.current_token.type}\n')
-                    params_node.parameters.append(self.expression())
-                    print(f'\n{self.current_token}\nParam node params{params_node.parameters}\n')
+                    param_token = self.current_token
+                    param_child = self.expression()
+                    print(f'\nAFTER FUNCTION LITERAL EXPR TOKEN: {self.current_token}\n'
+                          f'Param node params{params_node.parameters}\n')
+                    param = ParameterNode(param_token,
+                                          param_child,
+                                          len(params_node.parameters)+1)
+
+                    params_node.parameters.append(param)
+                    print(f'\nAFTER APPEND\n Param node params{params_node.parameters}\n')
                     if self.current_token.type == COMMA:
                         self._consume()
                         continue
@@ -492,15 +506,16 @@ class Parser:
                     self._consume()
                     while self.next_token.type != RBRACE:
                         stmt = self.statement()
+                        function_body.append(stmt)
                         if isinstance(stmt, ReturnStatementNode):
                             return_node = stmt
                             break
-                        function_body.append(stmt)
                 else:
                     self._error()
 
                 # Complete parsing the function body
-                self._consume()
+                self._consume(RBRACE)
+                self._consume(SEMICOLON)
 
                 function_body_node = StatementListNode(
                     Token("FUNCTION_BODY", f"fn_{function_name} body",
@@ -511,7 +526,7 @@ class Parser:
                 function_node = FunctionLiteralNode(token=function_token,
                                                     parameters=params_node,
                                                     body=function_body_node,
-                                                    value=return_node
+                                                    return_node=return_node
                                                     )
                 function_symbol = Symbol(function_node,
                                          self.symbol_table.context_level)
@@ -521,14 +536,72 @@ class Parser:
                       f'\n{function_symbol}'
                       f'\n{function_node}\n')
 
-                if self.current_token.type == SEMICOLON:
-                    self._consume()
-                else:
-                    self._error()
-
                 return function_node
+            elif self.call_flag and not self.function_flag:
+                print(f'\nTRIGGERED ARGUMENTS NODE CREATION\n')
+                self._consume()
+                args_node = ArgumentsListNode(Token('ARGUMENTS',
+                                                    'ARGUMENTS',
+                                                    self.current_token.begin_position,
+                                                    self.current_token.line_position),
+                                              )
+
+                while self.current_token.type != RPAREN:
+                    print(
+                        f'\nReading argument -> {self.current_token}\n'
+                        f'Argument node arguments {args_node.arguments}\n')
+                    print(f'\nPARAM TYPE {self.current_token.type}\n')
+                    arg_child = self.expression()
+                    print(f'\nAFTER CALL FUNCTION LITERAL EXPR TOKEN: {self.current_token}\n'
+                          f'CALL NAME: {args_node.name}\n'
+                          f'Param node params{args_node.arguments}\n')
+                    args_node.arguments.append(arg_child)
+                    print(f'\nAFTER APPEND\n Args node params{args_node.arguments}\n')
+                    if self.current_token.type == COMMA:
+                        self._consume()
+                        continue
+
+                    # Consume the RPAREN indicating the end of arguments
+                    self._consume(RPAREN)
+                    self._consume(SEMICOLON)
+
+                    symbol, error = self.symbol_table.lookup(function_name)
+                    if error:
+                        self._error(error)
+                    else:
+                        symbol_function: FunctionLiteralNode = symbol.value
+
+                    call_node = CallExpressionNode(function_token,
+                                                   symbol_function,
+                                                   args_node,
+                                                   SymbolTable(f'call_{function_name}',
+                                                               function_token,
+                                                               self.symbol_table)
+                                                   )
+                    call_symbol = Symbol(call_node,
+                                         self.symbol_table.context_level)
+
+                    symbol, error = self.symbol_table.lookup(call_node.name)
+
+                    self.symbol_table.define(call_node.name, call_symbol)
+
+                    print(f'\nHERE WE MAKE THE CALL NODE'
+                          f'\n{call_node}\n'
+                          '\nHERE IS ITS SYMBOL TABLE\n',
+                          f'\n{self.symbol_table}\n'
+                          '\nFUNCTION\n'
+                          f'\n{function_name}'
+                          '\nCALL SYMBOL\n'
+                          f'\n{call_symbol}'
+                          f'\nARGS NODE\n'
+                          f'\n{args_node}\n\n')
+
+                    return args_node
+
         else:
             self._error()
+
+        self.function_flag, self.call_flag = False, False
 
     def parse_call_statement(self):
         function_name = self.current_token.lexeme
@@ -609,38 +682,54 @@ class Parser:
                 else:
                     # Existing references should be looked up in the symbol table
                     pass
+                ident_node = IdentifierNode(self.current_token, None)
                 # TODO: DO ERRORS NEED TO BE CAPTURED FOR NON-EXISTING REFERENCES?
                 symbol, error = self.symbol_table.lookup(self.current_token.lexeme)
                 if error:
-                    self._error(error)
+                    ident_symbol = Symbol(ident_node, self.symbol_table.context_level)
+                    self.symbol_table.define(ident_node.name,ident_symbol)
                 else:
+
                     return symbol.node
-                return IdentifierNode(self.current_token, None)
+                return ident_node
         except SyntaxError:
             self._error()
 
     def _error(self, message: str | None = "Wrong usage!"):
         """
-        Record an error message.
-        Saves the error message to the symbol table for unexpected syntax
-        Errors are recalled at the end of the parse
-        """
-        error_info = f"Unexpected token {self.current_token.type} with lexeme '{self.current_token.lexeme}' at position {self.current_token.begin_position} on line {self.current_token.line_position}."
-        expected = "Expected factor, term, expression, or valid statement."
-        message = ''.join(info + '\n' for info in [message, error_info, expected])
-        self.errors.append(message)
-        # raise SyntaxError(f'Invalid syntax at {self.current_token.line_position}:{self.current_token.begin_position}'
-        #                   f'-> {message}')
+        Handles and records syntax errors during parsing.
 
-    @staticmethod
-    def is_keyword(token, keyword):
+        This method creates a new ParseError object with the current token and the provided error message.
+        It then appends this error to the list of errors for later recall. The method also prints the current
+        and next tokens for debugging purposes. It then attempts to recover from the error by consuming tokens
+        until it reaches a SEMICOLON token, signifying the end of a statement. After recovery, it prints the
+        error information for the recovered error.
+
+        Args:
+            message (str | None): The error message to be recorded. Defaults to "Wrong usage!".
+
+        Returns:
+            None
+        """
+        error_node = ParseError(self.current_token,
+                                message)
+        self.errors.append(error_node)
+        while self.current_token.type != SEMICOLON:
+            print(f'\nCURRENT\n{self.current_token}'
+                  f'\nNEXT\n{self.next_token}')
+            self._consume()
+        print(f'\nRecovered from error: {error_node.error_info}\n')
+        return None
+
+    @classmethod
+    def is_keyword(cls, token, keyword):
         """
         Check if a token is a specific keyword.
         """
         return token.type == IDENT and token.lexeme == keyword
 
-    @staticmethod
-    def is_ident(token):
+    @classmethod
+    def is_ident(cls, token):
         """
         Check if a token is an identifier.
         """
