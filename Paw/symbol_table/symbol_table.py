@@ -39,13 +39,13 @@ class Symbol:
             self.name: str = self.node.name
             self.type_ = self.set_type()
             if self.type_ == CONTEXT:
-                print(f"\nCreating a symbol from ContextToken\n {self.node.context_token}\n")
+                print(f"\nCreating a symbol from ContextToken\n {self.node}\n {self.node.context_token}\n")
                 self.line_declared: str | None = (str(self.node.context_token.line_position) +
                                                   ':' +
                                                   str(self.node.context_token.begin_position))
 
             elif self.node.__class__.__name__ == 'FunctionLiteralNode':
-                print(f"\nCreating a symbol from Token\n {self.node.token}\n")
+                print(f"\nCreating a symbol from Token\n {self.node}\n {self.node.token}\n")
                 self.line_declared: str | None = (str(self.node.token))
                 pass
             elif self.node.__class__.__name__ == 'AssignStatementNode':
@@ -55,6 +55,11 @@ class Symbol:
                 self.line_declared: str | None = (str(self.node.value.token.line_position) +
                                                   ':' +
                                                   str(self.node.value.token.begin_position))
+            elif self.node.__class__.__name__ == 'LetStatementNode':
+                print(f"\nCreating a symbol from Node.Value.Token\n {self.node.token}\n")
+                self.line_declared: str | None = (str(self.node.token.line_position) +
+                                                  ':' +
+                                                  str(self.node.token.begin_position))
             else:
                 print(f"\nCreating a symbol from NodeValue\n {self.node.value}\n")
                 self.line_declared: str | None = (str(self.node.value.line_position) +
@@ -220,7 +225,7 @@ class SymbolTable:
                     return None
 
         current_context[name] = symbol
-        print(f'\nUpdated Symbol table f{self.context_name}\n'
+        print(f'\nUpdated Symbol table {self.context_name}\n'
               f'{self}\n')
 
     def get_all_symbols(self):
@@ -269,8 +274,8 @@ class SymbolTable:
         for symbol in self.get_all_symbols().values():
             # print(f'\nHERE IS THE SYMBOL {symbol}\n{type(symbol)}\n\DONE DEBUG\n\n')
             row = [
-                textwrap.fill(str(symbol.name), width=25),  # Wrap name with max width of 15
-                textwrap.fill(str(symbol.type_), width=20),  # Wrap type with max width of 10
+                textwrap.fill(str(symbol.name), width=25),
+                textwrap.fill(str(symbol.type_), width=20),
                 str(symbol.line_declared) if symbol.line_declared else "-",  # Handle missing line number
                 str(symbol.context_level),
                 textwrap.fill(str(f'{symbol}')) if symbol.type_ == "SymbolTable" else textwrap.fill(str(symbol.value), width=60),  # Wrap value with max width of 20

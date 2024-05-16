@@ -1,12 +1,13 @@
-a = 10;
-b = 15;
+let a = 10;
+let b = 15;
 let c;
 
 c = a + b * a / b; // Answer should be 20 in this case
-
-if a > b {
-print(a);
-}
-else if b < a {
-print(b);
-};
+let d;
+d = 2 * (2 + 2) / 2;
+//if a > b {
+//print(a);
+//}
+//else if b < a {
+//print(b);
+//};

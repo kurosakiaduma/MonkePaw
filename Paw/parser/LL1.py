@@ -45,37 +45,33 @@ class StatementNode(Node):
 
 
 class LetStatementNode(StatementNode):
-    def __init__(self, token: Token, name, value):
+    def __init__(self, token: Token, name, child: Node | Deque[Node] | None = None, value: None = None):
         super().__init__(token, value)
         self.name = name
-        self.value = value
-
-
-class AssignStatementNode(StatementNode):
-    def __init__(self, token: Token, name, value):
-        super().__init__(token, value)
-        self.name = name
+        self.child = child
         self.value = value
 
 
 class ExpressionStatementNode(StatementNode):
-    def __init__(self, token: Token, value):
+    def __init__(self, token: Token, body: Node, value: Node | Deque | Dict | int | str | bool | float | None = None):
         super().__init__(token, value)
+        self.body = body
         self.value = value
+        self._type = None
 
 
 class IfStatementNode(StatementNode):
     def __init__(self, token: Token,
-                 condition: ExpressionStatementNode,
-                 consequence: Node,
-                 else_clause: ExpressionStatementNode | None = None,
+                 condition: ExpressionStatementNode | Deque[ExpressionStatementNode] = None,
                  alternative: Node | None = None,
                  value: Node | None = None,
                  ):
         super().__init__(token, value)
         self.condition = condition
-        self.consequence = consequence
-        self.else_clause = else_clause
+
+        if type(self.condition) == Deque and len(self.condition) == 1:
+            self.condition = self.condition[-1]
+
         self.alternative = alternative
 
 
@@ -91,6 +87,12 @@ class ClockStatementNode(StatementNode):
         self.function = function
 
 
+class ClockFunctionNode(Node):
+    def __init__(self, token: Token, value):
+        super().__init__(token, value)
+        self.value = value  # Modify based on your grammar's clock_function definition
+
+
 class CustomContextNode(Node):
     def __init__(self, token: Token, statement_list: StatementListNode, value):
         super().__init__(token, value)
@@ -102,7 +104,7 @@ class ExpressionNode(Node):
 
 
 class ExpressionList(Node):
-    def __init__(self, token: Token, expressions: list[ExpressionNode], value):
+    def __init__(self, token: Token, expressions: Deque[ExpressionNode], value):
         super().__init__(token, value)
         self.expressions = expressions
 
@@ -138,18 +140,13 @@ class IdentifierNode(ExpressionNode):
         self.value = value
 
 
-class ClockFunctionNode(Node):
-    def __init__(self, token: Token, value):
-        super().__init__(token, value)
-        self.value = value  # Modify based on your grammar's clock_function definition
-
-
 class FunctionLiteralNode(ExpressionNode):
     def __init__(self, token: Token, parameters: ParametersNode, body: StatementListNode,
                  value: ReturnStatementNode):
         super().__init__(token, value)
         self.parameters = parameters
         self.body = body
+        self._return_type: Node | None = None
 
     def __repr__(self):
         return f"\n{self.__class__.__name__} " \
@@ -157,15 +154,16 @@ class FunctionLiteralNode(ExpressionNode):
                f"name::= '{self.name}'," \
                f"parameters::='{self.parameters}' \n" \
                f"body:: ='{self.body} \n'" \
-               f"return::='{self.value}'\n)"
+               f"return::='{self._return_type}'\n"
 
 
 class CallExpressionNode(ExpressionNode):
     def __init__(self, token: Token, function: FunctionLiteralNode, arguments: ArgumentsListNode,
-                 value: Node | int | str | None):
+                 value: Node | int | str | None = None):
         super().__init__(token, value)
         self.function = function
         self.arguments = arguments
+        self.value = value
 
 
 class ParametersNode(Node):
@@ -181,128 +179,167 @@ class ArgumentsListNode(Node):
 
 
 class ReturnStatementNode(StatementNode):
-    def __init__(self, token: Token, expression: ExpressionNode):
+    def __init__(self, token: Token, expression: ExpressionNode, value: Node | None = None):
         self.expression: ExpressionNode = expression
-        self.value = self.expression.value
+        self.value = value
         super().__init__(token, self.value)
 
 
 class PrefixExpressionNode(ExpressionNode):
-    def __init__(self, token, operator, right, value):
+    def __init__(self, token, operator, left: Any, right: Node, value: Node | None = None):
         super().__init__(token, value)
         self.operator = operator
-        self.right = right
-
-
-class InfixExpressionNode(ExpressionNode):
-    def __init__(self, token, left: Node, operator: Node | str, right: Node, value):
-        super().__init__(token, value)
         self.left = left
-        self.operator = operator
         self.right = right
-        self.value = self.evaluate()
-
-    def evaluate(self):
-        if type(self.operator) == str:
-            if self.operator == '+':
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value + self.right.value
-                elif self.left.type in (STR) and self.left.type == self.right.type:
-                    return self.left.value + self.right.value
-                else:
-                    raise SyntaxError("AdditionError: Addition of STR or BOOL with FLOAT or INT type is prohibited")
-            elif self.operator == '-':
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value - self.right.value
-                elif self.left.type in (STR) and self.left.type == self.right.type:
-                    return self.left.value - self.right.value
-                else:
-                    raise SyntaxError(
-                        "SubtractionError: Subtraction works only for {FLOAT, INT} and {STR} distinct combinations.")
-            elif self.operator == '*':
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value * self.right.value
-                elif (self.left.type in (STR) and self.right.type in (INT)) or (
-                        self.left.type in (INT) and self.right.type in (STR)):
-                    return self.left.value * self.right.value
-                else:
-                    raise SyntaxError(
-                        "MultiplicationError: Multiplication works only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
-            elif self.operator == '/':
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value / self.right.value
-                else:
-                    raise SyntaxError("DivisionError: Division works only for {FLOAT, INT} distinct combinations.")
-            elif self.operator == GT_EQ:
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value >= self.right.value
-                elif self.left.type in (STR) and self.left.type == self.right.type:
-                    len(self.left.value) >= len(self.right.value)
-                else:
-                    raise SyntaxError(
-                        "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
-            elif self.operator == LT_EQ:
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value <= self.right.value
-                elif self.left.type in (STR) and self.left.type == self.right.type:
-                    return len(self.left.value) <= len(self.right.value)
-                else:
-                    raise SyntaxError(
-                        "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
-            elif self.operator == EQ:
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value == self.right.value
-                elif self.left.type in (STR) and self.left.type == self.right.type:
-                    return len(self.left.value) == len(self.right.value)
-                else:
-                    raise SyntaxError(
-                        "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
-            elif self.operator == GT:
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value > self.right.value
-                elif self.left.type in (STR) and self.left.type == self.right.type:
-                    return len(self.left.value) > len(self.right.value)
-                else:
-                    raise SyntaxError(
-                        "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
-            elif self.operator == LT:
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value < self.right.value
-                elif self.left.type in (STR) and self.left.type == self.right.type:
-                    return len(self.left.value) < len(self.right.value)
-                else:
-                    raise SyntaxError(
-                        "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
-            elif self.operator == NOT_EQ:
-                if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
-                    return self.left.value != self.right.value
-                elif self.left.type in (STR) and self.left.type == self.right.type:
-                    return len(self.left.value) != len(self.right.value)
-                else:
-                    raise SyntaxError(
-                        "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
-            else:
-                return None
-        elif type(self.operator) == Node:
-            return self.operator.value
-
-
-class GroupedExpressionNode(ExpressionNode):
-    def __init__(self, token, expression, value=None):
-        super().__init__(token, value)
-        self.expression = expression
-
-
-class PrefixOperatorNode(Node):
-    def __init__(self, token: Token, value):
-        super().__init__(token, value)
-        self.value = value  # Modify based on your operator logic (e.g., negation, minus)
+        self.value = value
 
 
 class InfixOperatorNode(Node):
-    def __init__(self, token: Token, value):
+    def __init__(self, token: Token, operator: str | Node, left: Node = None, right: Node = None, value=None):
         super().__init__(token, value)
-        self.value = value  # Modify based on your operator logic (e.g., addition, comparison)
+        self.value = value
+        self.left = left
+        self.right = right
+        self.operator = operator
+        self.type = None
+
+    def evaluate(self):
+        if self.operator == '+':
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                value = self.left.value + self.right.value
+                return value, type(value)
+            elif self.left.type == STR and self.left.type == self.right.type:
+                value = self.left.value + self.right.value
+                return value, type(value)
+            else:
+                raise SyntaxError("AdditionError: Addition of STR or BOOL with FLOAT or INT type is prohibited")
+        elif self.operator == '-':
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                value = self.left.value + self.right.value
+                return value, type(value)
+            else:
+                raise SyntaxError(
+                    "SubtractionError: Subtraction works only for {FLOAT, INT} combinations.")
+        elif self.operator == '*':
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                value = self.left.value * self.right.value
+                return value, type(value)
+            elif (self.left.type == STR and self.right.type == INT) or (
+                    self.left.type == INT and self.right.type == STR):
+                value = self.left.value * self.right.value
+                return value, type(value)
+            else:
+                raise SyntaxError(
+                    "MultiplicationError: Multiplication works only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
+        elif self.operator == '/':
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                value = self.left.value / self.right.value
+                return value, type(value)
+            else:
+                raise SyntaxError("DivisionError: Division works only for {FLOAT, INT} distinct combinations.")
+        elif self.operator == GT_EQ:
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                value = self.left.value >= self.right.value
+                return value, type(value)
+            elif self.left.type == STR and self.left.type == self.right.type:
+                value = len(self.left.value) >= len(self.right.value)
+                return value, type(value)
+            else:
+                raise SyntaxError(
+                    "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND STR} distinct combinations.")
+        elif self.operator == LT_EQ:
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                value = self.left.value <= self.right.value
+                return value, type(value)
+            elif self.left.type == STR and self.left.type == self.right.type:
+                value = len(self.left.value) <= len(self.right.value)
+                return value, type(value)
+            else:
+                raise SyntaxError(
+                    "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND STR} distinct combinations.")
+        elif self.operator == EQ:
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                value = self.left.value == self.right.value
+                return value, type(value)
+            elif self.left.type == STR and self.left.type == self.right.type:
+                value = len(self.left.value) == len(self.right.value)
+                return value, type(value)
+            else:
+                raise SyntaxError(
+                    "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND STR} distinct combinations.")
+        elif self.operator == GT:
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                value = self.left.value > self.right.value
+                return value, type(value)
+            elif self.left.type == STR and self.left.type == self.right.type:
+                value = len(self.left.value) > len(self.right.value)
+                return value, type(value)
+            else:
+                raise SyntaxError(
+                    "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
+        elif self.operator == LT:
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                return self.left.value < self.right.value
+            elif self.left.type in (STR) and self.left.type == self.right.type:
+                return len(self.left.value) < len(self.right.value)
+            else:
+                raise SyntaxError(
+                    "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
+        elif self.operator == NOT_EQ:
+            if self.left.type in (INT, FLOAT) and self.right.type in (INT, FLOAT):
+                return self.left.value != self.right.value
+            elif self.left.type == STR and self.left.type == self.right.type:
+                return len(self.left.value) != len(self.right.value)
+            else:
+                raise SyntaxError(
+                    "BooleanError: Boolean comparators work only for {FLOAT, INT} and {STR AND INT} distinct combinations.")
+        elif type(self.operator) == Node:
+            value = self.operator.value
+            return value, type(value)
+        else:
+            value = None
+            return value, type(value)
+
+
+class AssignStatementNode(InfixOperatorNode):
+    def __init__(self, token: Token,
+                 left: Node,
+                 right: Node,
+                 value: Any | Node | None = None,
+                 operator: str = ASSIGN):
+        super().__init__(token, value)
+        self.name = token.lexeme
+        self.left = left
+        self.right = right
+        self.operator = operator
+        self.value = value
+        self._type: Any | None = None
+
+
+class GroupedExpressionNode(ExpressionNode):
+    def __init__(self, token,
+                 expression: ExpressionStatementNode |
+                             PrefixOperatorNode |
+                             GroupedExpressionNode |
+                             InfixOperatorNode |
+                             None = None,
+                 value: Any | Node | None = None, ):
+        super().__init__(token, value)
+        self.expression = expression
+        self.value = value
+
+
+class PrefixOperatorNode(Node):
+    def __init__(self, token: Token,
+                 operator: str | Node,
+                 left: Node = None,
+                 right: Node = None,
+                 value: Any | Node | None = None):
+        super().__init__(token, value)
+        self.operator = operator
+        self.value = value
+        self.left = left
+        self.right = right
 
 
 grammar = {
@@ -344,7 +381,7 @@ grammar = {
     ],
 
     IfStatementNode: [
-        [IF, LPAREN, ExpressionNode, RPAREN, LBRACE, StatementListNode, RBRACE, ExpressionStatementNode],
+        [IF, LPAREN, ConditionNode, RPAREN, LBRACE, ConsequenceNode, RBRACE, AlternativeNode],
     ],
 
     PrintStatementNode: [
@@ -368,8 +405,8 @@ grammar = {
         [IdentifierNode],
         [FunctionLiteralNode],
         [CallExpressionNode],
-        [PrefixExpressionNode],
-        [InfixExpressionNode],
+        [PrefixOperatorNode],
+        [InfixOperatorNode],
         [GroupedExpressionNode],
     ],
 
@@ -392,11 +429,7 @@ grammar = {
         [IdentifierNode]
     ],
 
-    PrefixExpressionNode: [
-        [PrefixOperatorNode, ExpressionNode],
-    ],
-
-    InfixExpressionNode: [
+    InfixOperatorNode: [
         [ExpressionNode, InfixOperatorNode, ExpressionNode],
     ],
 
