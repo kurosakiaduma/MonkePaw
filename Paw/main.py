@@ -10,6 +10,33 @@ from parser.LL1 import *
 sys.path.append("..")
 
 
+def scan(source: str | None = None, filename: str | None = None):
+    if filename:
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                content = f.read()
+                print(content)
+                source = content
+        except FileNotFoundError:
+            print("Error: File not found.")
+
+    lexer = Lexer(character_stream=source)
+    start_time = time.time()
+
+    while True:
+        tok = lexer.next_token()
+        try:
+            if tok.type == tokens.EOF:
+                break
+            print(f'token found-> {tok}\n'
+                  f'\ntokens -> {lexer.tokens}\n')
+        except AttributeError:
+            continue
+
+    end_time = time.time()
+    print(f"Total runtime is {round(end_time - start_time, 8)}\n")
+    return lexer
+
 def main():
     username = getpass.getuser()
 
@@ -38,27 +65,7 @@ def main():
             break  # Exit after starting the REPL
         elif command in ["scan_file", "sf"]:
             filename = input("Enter the full path of the file: ")
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    print(content)
-                l = Lexer(character_stream=content)
-                start_time = time.time()
-
-                while True:
-                    tok = l.next_token()
-                    try:
-                        if tok.type == tokens.EOF:
-                            break
-                        print(f'{tok}\n')
-                    except AttributeError:
-                        continue
-
-                end_time = time.time()
-                print(f"Total runtime is {round(end_time - start_time, 8)}\n")
-
-            except FileNotFoundError:
-                print("Error: File not found.")
+            l = scan(filename=filename)
         elif command in ["show_tokens", "st"]:
             try:
                 if l.tokens:
@@ -68,16 +75,36 @@ def main():
                     print("You have no tokens!\n")
             except UnboundLocalError:
                 print("You need to scan some Monke first!\n")
-        elif command in ["parse_tokens", "pt"]:
-            try:
-                # Create a parser and start parsing
-                p = Parser(l.tokens)  # Pass the tokens deque to the parser
-                ast = p.parse()  # Call the parser's parse method
-                print(f'\nHERE IS THE AST\n{ast}\n')  # Print the AST for debugging
-            except (UnboundLocalError, ReferenceError) as e:
-                print(
-                    f"\n{e}\nScan your source code to generate some tokens first. "
-                    f"Use 'keywords' command to find out how\n")
+        elif command in ["parser", "prs"]:
+            while True:
+                parser_command = input("(Parser)> ").lower()
+                if parser_command in ["parse_directly", "pd"]:
+                    statement = input("Enter your statement: ")
+                    parser_lexer = scan(source=statement)
+                    print(f'TOKENS - {parser_lexer.tokens}')
+                    p = Parser(parser_lexer.tokens)
+                    ast = p.parse()
+                    print(f'\nHERE IS THE AST\n{ast}\n')
+                elif parser_command in ["parse_file", "pf"]:
+                    filename = input("Enter the full path of the file: ")
+                    parser_lexer = scan(filename=filename)
+                    p = Parser(parser_lexer.tokens)
+                    ast = p.parse()
+                    print(f'\nHERE IS THE AST\n{ast}\n')
+                elif parser_command in ["show_ast", "sa"]:
+                    try:
+                        print(f'\nHERE IS THE AST\n{p.ast}\n')
+                    except UnboundLocalError:
+                        print("\nPlease parse tokens before displaying AST")
+                elif parser_command in ["show_symbol_table", "sst"]:
+                    try:
+                        print(p.symbol_table)
+                    except UnboundLocalError:
+                        print("\nPlease parse tokens before displaying Symbol Table")
+                elif parser_command == "exit":
+                    break
+                else:
+                    print("Invalid command. Enter 'help' for options.")
         elif command in ["eval_tokens", "et"]:
             while True:
                 inp = (input("(Token Evaluator) Enter position> "))
@@ -124,13 +151,21 @@ compilation. This Python workspace also hosts a Monke lexer.
 Available Commands:
 
 - start: Start the interactive REPL for tokenizing code.
-- scan_file: Read code from a file and tokenize it.
-- show_tokens: Show the tokens generated from the Lexical Analysis.
-- parse_tokens: Create an Abstract Syntax Tree from the tokens.
-- eval: Directly interact with your compiler output at any stage.\n'l' commands are for Lexer.\n'p' commands are for Parser.
+- scan_file or sf: Read code from a file and tokenize it.
+- show_tokens or st: Show the tokens generated from the Lexical Analysis.
+- parser or prs: Enter the parser submenu.
 - keywords: List the reserved keywords in the Monke language.
 - about: Display information about the MonkePaw compiler.
 - exit: Exit the Monke compiler.
+
+Parser Submenu Commands:
+
+- parse_directly or pd: Parse statements directly from the user.
+- parse_file or pf: Parse a source file.
+- show_ast or sa: Show the Abstract Syntax Tree.
+- show_symbol_table or sst: Show the symbol table.
+- exit: Exit the parser submenu.
+
 """)
         elif command == "exit":
             print("Bye!")
