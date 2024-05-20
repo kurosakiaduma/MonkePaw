@@ -21,6 +21,10 @@ class Parser:
         self.function_flag = None
         self.call_flag: bool | None = None
         self.expression_flag: bool | None = None
+        self.if_parse_flag: bool = False
+        self.else_if_flag: bool = False
+        self.else_flag: bool = False
+
         self.ast: deque[Node] | None = None
         self.errors = deque([])
         self._consume()
@@ -29,37 +33,35 @@ class Parser:
         try:
             if expected_type:
                 assert (self.current_token.type == expected_type)
-            self.current_token = self.next_token
-            self.next_token = next(self.token_stream)
+                self.current_token = self.next_token
+                self.next_token = next(self.token_stream)
         except (AssertionError, StopIteration) as e:
             if isinstance(e, AssertionError):
-                print(f'\nSkipped error {str(e)}\n')
+                print(f'\nSaved error {str(e)}\n')
                 print(f'\n{expected_type}\n')
-                print(f'\n{self.current_token}\n')
-                print(f'\n{self.next_token}\n')
                 self._error(str(e))
             self.next_token: bool = False
 
     def parse(self) -> Deque:
         """
-        This function works is triggered when the parse tree is initialized the token stream consumption.
-        The function takes an initial statement and parses up till it reaches
-        1. the statement node to ensure that it starts parsing a new line
-        2. the program node to ensure that it has parsed the first statement then the entire program
+            This function works is triggered when the parse tree is initialized the token stream consumption.
+            The function takes an initial statement and parses up till it reaches
+            1. the statement node to ensure that it starts parsing a new line
+            2. the program node to ensure that it has parsed the first statement then the entire program
         """
 
         ast = deque([])
 
         # Don't enter a new context here
         stmt_list_node = StatementListNode(Token('STATEMENTS', 'STATEMENTS',
-                                                 None, None, None),
-                                           ast
-                                           )
+                                                     None, None, None),
+                                               ast
+                                               )
         program_token = Token('PROGRAM', 'PROGRAM', None, None, None)
 
         program_node = ProgramNode(program_token,
-                                   stmt_list_node,
-                                   )
+                                       stmt_list_node,
+                                       )
         program_symbol = Symbol(program_node, 0)
         self.symbol_table.define('PROGRAM', program_symbol)
 
@@ -74,7 +76,7 @@ class Parser:
 
     def statement(self):
         print(f'\nParsing {self.current_token}\n'
-              f'Next is {self.next_token}\n')
+                  f'Next is {self.next_token}\n')
         if self.current_token.type == LET and self.next_token.type == IDENT:  # type: ignore
             self._consume()
             if self.next_token.type == ASSIGN:
@@ -106,10 +108,10 @@ class Parser:
                 try:
                     context_name = f'{self.symbol_table.context_name}_inner_{self.symbol_table.inners.popleft()}'
                     context_token = Token(context_name,
-                                          context_name,
-                                          self.current_token.line_position,
-                                          self.current_token.begin_position,
-                                          None)
+                                            context_name,
+                                            self.current_token.line_position,
+                                            self.current_token.begin_position,
+                                            None)
                 except IndexError:
                     self._error(f"You've reached the limit of inner scopes for this particular parent -> "
                                 f"{self.symbol_table.name}")
@@ -117,8 +119,8 @@ class Parser:
             context_token.type = "CONTEXT"
             self._consume(LBRACE)
             self.symbol_table, new_context_symbol = self.symbol_table.enter_context(context_name,
-                                                                                    context_token
-                                                                                    )
+                                                                                        context_token
+                                                                                        )
             block_stmt = self.block_statement()
             context_node = StatementListNode(context_token, block_stmt)
             self._consume(RBRACE)
@@ -148,7 +150,7 @@ class Parser:
             return func_statement_node
 
         else:
-            return self.expression_statement()
+                return self.expression_statement()
 
     def block_statement(self):
         """
@@ -184,58 +186,55 @@ class Parser:
         self.symbol_table.define(name, symbol)  # Add the symbol to the symbol table
         print(f'\nThis is saved symbol_table from let_stmt\n{self.symbol_table}\n')
 
+        self.check_hanging()
         return ident_def_node
 
     def var_declaration(self):
         node_token = self.current_token
-        child: Deque[IdentifierNode] | IdentifierNode = deque([])
+        children: Deque[IdentifierNode] | IdentifierNode = deque([])
 
         while self.current_token.type != SEMICOLON:
             if Parser.is_ident(self.current_token):
-                expr = self.expression()
+                expr: IdentifierNode = self.parse_primary()
                 if not isinstance(expr, IdentifierNode):
                     self._error('Wrong variable declaration statement')
-                child.append(expr)
-                if self.next_token.type == COMMA:
+                children.append(expr)
+                print(f'\nCHILD {children}\n')
+                print(f'\n{self.current_token} {self.next_token}\n')
+                self._consume(IDENT)
+                print(f'\n{self.current_token} {self.next_token}\n')
+                if self.current_token.type == COMMA:
+                    print(f'\nIN COMMA\n{self.current_token} {self.next_token}\n')
                     self._consume(COMMA)
+                    print(f'\nIN COMMA\n{self.current_token} {self.next_token}\n')
 
-        if len(child) == 1:
-            child = child[0]
-        elif not child:
+        if not children:
             self._error("Used keyword: 'let' without identifiers!")
 
+        node_name: str = ''
+        for child_node in children:
+            node_name = node_name + '_' + child_node.name
+
         let_node = LetStatementNode(node_token,
-                                    node_token.lexeme,
-                                    child)
+                                    node_name,
+                                    children)
 
-        symbol, error = self.symbol_table.lookup(node_token.lexeme)
-
-        if symbol is None:
-            print(f'\nWill print new symbol for {let_node} inside\n{self.symbol_table}\n')
-            self._error(f'Undeclared identifier used! {error}')
-            let_symbol = Symbol(let_node, self.symbol_table.context_level)
-            self.symbol_table.define(node_token.lexeme, let_symbol)
-        else:
-            symbol.node = let_node
-            symbol.value = let_node.value
-            symbol.line_declared = f'{let_node.token.line_position}:{let_node.token.begin_position}'
-
-        self._consume(SEMICOLON)
+        self.check_hanging()
         return let_node
 
     def assign_statement(self):
         node_token = self.current_token
         name = node_token.lexeme
-        self._consume()
-        self._consume()
+        self._consume(IDENT)
+        self._consume(ASSIGN)
         child = self.expression_statement()
         symbol, error = self.symbol_table.lookup(name)
         ident_node = IdentifierNode(node_token, value=child)
         assign_node = AssignStatementNode(child.token,
                                           ident_node,
+                                          child,
                                           child)
         if symbol is None:
-
             self._error(f'Undeclared identifier used! {error}')
             assign_symbol = Symbol(assign_node, self.symbol_table.context_level)
             self.symbol_table.define(name, assign_symbol)
@@ -245,51 +244,6 @@ class Parser:
             symbol.line_declared = f'{assign_node.token.line_position}:{assign_node.token.begin_position}'
         return assign_node
 
-    def if_statement(self):
-        print(f'\n ORIGINAL THIS IS IF TRAVERSAL CURRENT TOKEN\n'
-              f'\n{self.current_token}\n'
-              f'\nTHIS IS TRAVERSAL NEXT TOKEN\n'
-              f'\n{self.next_token}\n')
-        self._consume()
-        print(f'\nFORMED THIS IS IF TRAVERSAL CURRENT TOKEN\n'
-              f'\n{self.current_token}\n'
-              f'\nTHIS IS TRAVERSAL NEXT TOKEN\n'
-              f'\n{self.next_token}\n')
-        self._consume()
-        print(f'\nCONDITION THIS IS IF TRAVERSAL CURRENT TOKEN\n'
-              f'\n{self.current_token}\n'
-              f'\nTHIS IS TRAVERSAL NEXT TOKEN\n'
-              f'\n{self.next_token}\n')
-        if_node: IfStatementNode | None = None
-        condition = self.expression_statement()
-        self._consume(LBRACE)
-        self._consume()
-        consequence = self.statement()
-        self._consume()
-        if self.current_token.type == ELSE:
-            else_condition = ExpressionStatementNode(
-                Token('ELSE', 'ELSE',
-                      self.current_token.begin_position,
-                      self.current_token.line_position,
-                      None),
-                None
-            )
-            if self.next_token.type == IF:
-                self._consume()
-                self._consume()
-                else_condition = self.expression_statement()
-            else:
-                self._consume()
-            alternative = self.statement()
-            if_node = IfStatementNode(Token(IF, 'if'),
-                                      condition,
-                                      consequence,
-                                      else_clause=else_condition,
-                                      alternative=alternative, )
-            self._consume()
-        self._consume(SEMICOLON)
-        return if_node
-
     def expression_statement(self):
         # Since the Shunting-yard algorithm returns the complete expression,
         # we no longer need to loop until a semicolon is encountered.
@@ -297,17 +251,24 @@ class Parser:
         print(f'\nThis is the expr\n'
               f'\n{expr}\n'
               f'\n{self.current_token}\n')
-        return ExpressionStatementNode(expr.token, expr)
+
+        self.check_hanging()
+        return ExpressionStatementNode(expr.token,
+                                       expr,
+                                       expr)
 
     def print_statement(self):
-        self._consume()
+        self._consume(PRINT)
         expr = self.expression()
         self._consume(SEMICOLON)
-        return PrintStatementNode(Token(PRINT, 'print'), expr)
+        return PrintStatementNode(Token(PRINT, 'print'), expr, None)
 
     def clock_statement(self):
-        self._consume()
-        self._consume()
+        print('\nIN PRINT STATEMENT\n'
+              f'\n{self.current_token}\n'
+              f'\n{self.next_token}\n')
+        self._consume(CLOCK)
+        self._consume(DOT)
         function_name = self.current_token.lexeme
         self._consume()
         self._consume()
@@ -328,7 +289,94 @@ class Parser:
         return ReturnStatementNode(Token(RETURN, 'return'), expr)
 
     def expression(self):
-        return self.shunting_yard()
+        if self.if_parse_flag:
+            conditions = deque([])
+            return self.shunting_yard_if(conditions)
+        else:
+            return self.shunting_yard()
+
+    def if_statement(self):
+        if_token = self.current_token
+        self._consume(IF)
+        conditions = deque([])
+        # At this point, the output stack should contain IfConditionNodes and alternatives
+        if_statement_node = self.build_if_statement_node(if_token, conditions)
+        # Parse the condition using the shunting yard
+        # algorithm for 'if'
+        self.shunting_yard_if(if_statement_node, conditions)
+        return if_statement_node
+
+    def shunting_yard_if(self, if_statement: IfStatementNode, conditions):
+        while self.current_token.type != SEMICOLON:
+            token = self.current_token
+            if token.type == LPAREN:
+                if self.if_parse_flag:
+                    pass
+                else:
+                    # Flip the if parse flag to indicate that we are parsing an if statement
+                    self.if_parse_flag = not self.if_parse_flag
+                while True:
+                    left_operand = self.parse_primary()
+                    if self.current_token in bool_ops:
+                        operator_token = self.current_token
+                        self._consume()
+                        continue
+                    else:
+                        self._error(f"\nUnidentified operator '{self.current_token.lexeme}' used in IF statement\n"
+                                    f"Expected one in: {bool_ops}\n"
+                                    f"\n")
+                    right_operand = self.parse_primary()
+                    condition_node = IfConditionNode(left_operand, right_operand, operator_token)
+                    self._consume(RPAREN)
+                    conditions.append(condition_node)
+                    if token.type == LBRACE:
+                        self._consume(LBRACE)
+                        condition_statements = deque([])
+                        while self.current_token.type != RBRACE:
+                            condition_statements.append(self.statement())
+                        # Update the latest IfConditionNode in the output stack with the statements
+                        if condition_statements and isinstance(conditions[-1], IfConditionNode):
+                            conditions[-1].statements = condition_statements
+                        else:
+                            # Handle cases where there's an empty 'else' block
+                            pass
+                        self._consume(RBRACE)
+                        if self.if_parse_flag and not (self.else_flag or self.else_if_flag):
+                            if_statement.conditions.append(condition_node)
+                            break
+                        elif self.else_if_flag or self.else_flag:
+                            return condition_node
+
+            elif token.type == ELSE and self.next_token.type == IF:
+                self._consume(ELSE)
+                condition_node = self.expression()
+                # Create an IfConditionNode and append it to the output stack
+                if_statement.conditions.append(condition_node)  # Placeholder for statements
+            elif token.type == ELSE and self.next_token.type == LBRACE:
+                alternative = StatementListNode(self.current_token, deque())
+                self._consume(LBRACE)
+                while self.current_token.type != RBRACE:
+                    alternative.statements.append(self.statement())
+                self._consume(RBRACE)
+                if_statement.conditions.append(alternative)
+            else:
+                # Handle other tokens or errors
+                self._error()
+            self._consume()  # Move to the next token
+        return True
+
+    @staticmethod
+    def build_if_statement_node(if_token, conditions: IfConditionNode | Deque[IfConditionNode | StatementListNode]):
+        conditions = conditions
+        alternative = None
+
+        # Create the IfStatementNode with the conditions and alternative while empty
+        if_statement_node = IfStatementNode(
+            token=if_token,
+            conditions=conditions,
+            alternative=alternative
+        )
+        return if_statement_node
 
     def shunting_yard(self):
         parsed_start: bool = False
@@ -352,8 +400,10 @@ class Parser:
                   f'\nSHUNTING ON TOP {self.expression_flag, parsed_start}')
             token = self.current_token
 
-            if self.next_token.type in [SEMICOLON]:
+            if self.next_token.type in [SEMICOLON, COMMA] and not self.expression_flag:
                 self.expression_flag = None
+                if self.next_token.type == COMMA:
+                    return self.var_declaration()
             else:
                 self.expression_flag = True
 
@@ -366,12 +416,11 @@ class Parser:
                 else:
                     self._consume()
                     return atom
-                print(f'\n*MURKY*\n{token} {self.current_token}\n{self.next_token}\n')
+                print(f'\n**MURKY**\n{atom}\n{token}\n{self.current_token}\n{self.next_token}\n**\n')
                 if self.current_token.type in [SEMICOLON, EOF]:
                     break
-                elif self.current_token.type not in [BANG, MINUS, PLUS, ASTERISK, SLASH,]:
-                    self._consume()
-
+                elif self.current_token.type not in [BANG, MINUS, PLUS, ASTERISK, SLASH]:
+                    self._error(f'❌ Usage of {self.current_token.type} in expressions is not allowed.')
             elif token.type in precedence:
                 try:
                     if (type(operator_stack[-1]) == GroupedExpressionNode) or token.type == LPAREN:
@@ -381,6 +430,10 @@ class Parser:
                         temp_node.right = output_stack.pop()
                         temp_node.left = output_stack.pop()
                         output_stack.append(temp_node)
+                        print('\nREPLACEMENTS STARTED'
+                              f'\nLower: {temp_node}'
+                              f'\nRight: {temp_node.right}'
+                              f'\nLeft: {temp_node.left}\n')
                 except (IndexError, AttributeError):
                     pass
 
@@ -420,8 +473,9 @@ class Parser:
                 self._consume(RPAREN)
             else:
                 break
-            print(f'\nDONE ATOM\nOPERATOR STACK: {operator_stack}\n')
-            print(f'\nOUTPUT STACK: {output_stack}\n')
+            print(f'\nDONE ALL EXPRESSION ATOMS'
+                  f'\nOPERATOR STACK: {operator_stack}\n')
+            print(f'OUTPUT STACK: {output_stack}\n')
 
         while operator_stack:
             temp_node: InfixOperatorNode | PrefixOperatorNode | GroupedExpressionNode = operator_stack.pop()
@@ -625,7 +679,7 @@ class Parser:
             # Get the function literal node
             function_literal_node = function_symbol.value
 
-            call_func_node = CallExpressionNode(Token("FUNCTION_CALL", function_name),
+            call_func_node = CallExpressionNode(Token(f"{function_literal_node.name}_call", function_name),
                                                 function_literal_node,
                                                 args,
                                                 None)
@@ -672,24 +726,27 @@ class Parser:
                 begin_pos = self.current_token.begin_position
                 self._consume()
                 print(f'\nRETURN BASIC LITERAL NODE {self.current_token} {self.next_token}\n')
-                return IntegerLiteralNode(Token(type_, child, line_pos, begin_pos), child) if type_ == INT else \
+
+                basic_node =  IntegerLiteralNode(Token(type_, child, line_pos, begin_pos), child) if type_ == INT else \
                     FloatLiteralNode(Token(type_, child, line_pos, begin_pos), child) if type_ == FLOAT else \
                         StringLiteralNode(Token(type_, child, line_pos, begin_pos), child) if type_ == STR else \
                             BooleanLiteralNode(Token(type_, child, line_pos, begin_pos), child)
+
+                print("\nThis is the basic node representation"
+                      f"\n{basic_node}\n"
+                      "\n")
+                return basic_node
             elif self.current_token.type == IDENT:
                 if self.next_token.type == LPAREN:
                     return self.parse_call_statement()
-                else:
-                    # Existing references should be looked up in the symbol table
-                    pass
+
                 ident_node = IdentifierNode(self.current_token, None)
                 # TODO: DO ERRORS NEED TO BE CAPTURED FOR NON-EXISTING REFERENCES?
                 symbol, error = self.symbol_table.lookup(self.current_token.lexeme)
                 if error:
-                    ident_symbol = Symbol(ident_node, self.symbol_table.context_level)
-                    self.symbol_table.define(ident_node.name,ident_symbol)
+                    self._error(f"Usage of non-existent identifier in IF statement")
                 else:
-
+                    # TODO: HOW CAN CONTROL FLOW GRAPHS AND GRAPH COLORING HELP?
                     return symbol.node
                 return ident_node
         except SyntaxError:
@@ -729,7 +786,7 @@ class Parser:
         return token.type == IDENT and token.lexeme == keyword
 
     @classmethod
-    def is_ident(cls, token):
+    def is_ident(cls, token: Token):
         """
         Check if a token is an identifier.
         """
@@ -737,3 +794,11 @@ class Parser:
 
     def show_ast(self):
         return self.ast
+
+    def check_hanging(self):
+        # Hanging semicolons that are preceded by a semicolon
+        # These are basically empty statements
+        # let a,b,c;;
+        while self.current_token.type == SEMICOLON:
+            self._consume(SEMICOLON)
+
