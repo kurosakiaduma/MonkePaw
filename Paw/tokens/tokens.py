@@ -88,6 +88,8 @@ keywords = {
     "math": MATH,
 }
 
+bool_ops = [LT_EQ, LT, GT_EQ, GT, EQ, NOT_EQ]
+
 
 def lookup_ident(ident):
     return keywords.get(ident, IDENT)

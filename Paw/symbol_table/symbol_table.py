@@ -21,7 +21,7 @@ class Symbol:
             context_level
     ):
         self.node = node
-        self.type_ = None
+        self._type = self.set_type()
         self.name = None
         self.line_declared = None
         self.line_referenced = None
@@ -31,14 +31,16 @@ class Symbol:
         self.create_symbol()
 
     def create_symbol(self) -> bool:
-        print(f'\n{self.node}\n'
+        print(f'\nCREATE SYMBOL\n'
+              f'\n{self.node}\n'
               f'\n{type(self.node)}\n'
               f'\n{isinstance(self.node, Node)}\n')
         if isinstance(self.node, Node):
-            print(f"\nCreating a symbol from Node\n {self.node}\n{self.node.__class__.__name__}\n")
+            print(f"\nCreating a symbol from Node\n {self.node}\n"
+                  f"{self.node.__class__.__name__}\n")
             self.name: str = self.node.name
-            self.type_ = self.set_type()
-            if self.type_ == CONTEXT:
+            self._type = self.set_type()
+            if self._type == CONTEXT:
                 print(f"\nCreating a symbol from ContextToken\n {self.node}\n {self.node.context_token}\n")
                 self.line_declared: str | None = (str(self.node.context_token.line_position) +
                                                   ':' +
@@ -72,7 +74,7 @@ class Symbol:
         elif isinstance(self.node, SymbolTable):
             print(f"\nCreating a symbol from Symbol Table named {self.node.context_name}\n")
             self.name: str = self.node.context_name
-            self.type_ = self.node.__class__.__name__
+            self._type = self.node.__class__.__name__
             self.line_declared: str | None = (str(self.node.context_token.line_position) +
                                               ':'+
                                               str(self.node.context_token.begin_position))
@@ -86,20 +88,20 @@ class Symbol:
         return True
 
     def set_type(self):
-        if self.node.type:
-            self.type_ = self.node.type
-        elif self.node.type == ReturnStatementNode:
-            self.type_ = 'FUNCTION DEFINITION'
+        if self.node._type:
+            self._type = self.node._type
+        elif self.node._type == ReturnStatementNode:
+            self._type = 'FUNCTION DEFINITION'
         elif self.node.type == StatementListNode:
-            self.type_ = 'CONTEXT'
+            self._type = 'CONTEXT'
 
-        return self.type_
+        return self._type
 
     def __repr__(self):
-        return f"Symbol(name='{self.name}', type_='{self.type_}', context_level={self.context_level})"
+        return f"Symbol(name='{self.name}', type_='{self._type}', context_level={self.context_level})"
 
     def __str__(self):
-        return f"Symbol '{self.name}' of type '{self.type_}' at context level {self.context_level}"
+        return f"Symbol '{self.name}' of type '{self._type}' at context level {self.context_level}"
 
 
 class SymbolTable:
@@ -214,11 +216,12 @@ class SymbolTable:
         if name in current_context.keys():
             answer = ""
             while answer not in ['Y', 'N']:
-                answer = input(f"\nSymbol '{name}' '{symbol}' already defined in current context\n"
+                answer = input(f"\nHERE IS THE CURRENT SYMBOL TABLE\n{str(self)}\n"
+                               f"\nSymbol '{name}' '{symbol}' already defined in current context\n"
                                f"\nEnter Y if you intend to redefine the symbol {name}"
                                f"\nelse enter N to not save this new symbol and"
                                f" continue parsing with an erroneous assignment\n"
-                               f"{str(self)}")
+                               )
                 if answer.split('\n')[0] == 'Y':
                     break
                 elif answer.split('\n')[0] == 'N':
@@ -275,10 +278,10 @@ class SymbolTable:
             # print(f'\nHERE IS THE SYMBOL {symbol}\n{type(symbol)}\n\DONE DEBUG\n\n')
             row = [
                 textwrap.fill(str(symbol.name), width=25),
-                textwrap.fill(str(symbol.type_), width=20),
+                textwrap.fill(str(symbol._type), width=20),
                 str(symbol.line_declared) if symbol.line_declared else "-",  # Handle missing line number
                 str(symbol.context_level),
-                textwrap.fill(str(f'{symbol}')) if symbol.type_ == "SymbolTable" else textwrap.fill(str(symbol.value), width=60),  # Wrap value with max width of 20
+                textwrap.fill(str(f'{symbol}')) if symbol._type == "SymbolTable" else textwrap.fill(str(symbol.value), width=60),  # Wrap value with max width of 20
             ]
             table_data.append(row)
 

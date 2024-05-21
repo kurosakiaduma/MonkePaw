@@ -1,4 +1,6 @@
 from Paw.tokens.tokens import Token
+
+
 class ParseError:
     def __init__(self,
                  token: Token,
