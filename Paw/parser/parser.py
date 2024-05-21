@@ -84,7 +84,7 @@ class Parser:
             stmt = self.statement()
             if stmt is not None:
                 ast.append(stmt)
-                print(f'\nMain parser\nWorking from => {self.current_token} then {self.next_token}\n')
+                print(f'\nMain parser\n\nThis is the symbol table\n{self.symbol_table}\nWorking from => {self.current_token} then {self.next_token}\n')
                 print(f"\n{ast}\n")
             self.ast = ast
         return ast
@@ -241,13 +241,14 @@ class Parser:
                 node_name = node_name + '_' + child_node.name
                 let_symbol = Symbol(child_node,
                                     self.symbol_table.context_level)
-                self.symbol_table.define(node_name,
+                self.symbol_table.define(child_node.name,
                                          let_symbol)
         elif len(children) == 1:
-            node_name = children[-1].name
-            let_symbol = Symbol(children[-1],
+            child_node = children[-1]
+            node_name = child_node.name
+            let_symbol = Symbol(child_node,
                                 self.symbol_table.context_level)
-            self.symbol_table.define(node_name,
+            self.symbol_table.define(child_node.name,
                                      let_symbol)
         let_node = LetStatementNode(node_token,
                                     node_name,
@@ -458,7 +459,7 @@ class Parser:
 
             print(f'\nCHANGES TO FLAGS {self.expression_flag, parsed_start}')
 
-            if token.type in (INT, FLOAT, STR, BOOL, IDENT):
+            if token.type in (INT, FLOAT, STR, IDENT):
                 atom = self.parse_primary()
                 if self.expression_flag:
                     self.operator_lookup_flag = True
@@ -470,8 +471,11 @@ class Parser:
                           '\n')
                     return atom
                 print(f'\n**MURKY**\n{atom}\n{token}\n{self.current_token}\n{self.next_token}\n**\n')
-                self.check_hanging()
-                if self.current_token.type in [SEMICOLON, EOF]:
+                print(f'\nPARSE SHUNTING\nOPERATOR STACK \n{operator_stack}'
+                      f'\nOUTPUT STACK\n{output_stack}\n')
+                if self.current_token.type in [IDENT, INT, FLOAT, STR]:
+                    self._consume()
+                elif self.current_token.type in [SEMICOLON, EOF]:
                     break
                 elif self.current_token.type not in [BANG, MINUS, PLUS, ASTERISK, SLASH]:
                     self._error(self.current_token,
@@ -816,9 +820,12 @@ class Parser:
                     ident_symbol = Symbol(ident_node,
                                           self.symbol_table.context_level)
                     self.symbol_table.define(ident_node.name, ident_symbol)
+                    print(f"\nError returned this node {ident_node}\n")
                 else:
                     # TODO: HOW CAN CONTROL FLOW GRAPHS AND GRAPH COLORING HELP?
+                    print(f"\nLookup returned this node {symbol.node}\n")
                     return symbol.node
+                print(f"\nLookup returned this node {ident_node}\n")
                 return ident_node
         except SyntaxError:
             self._error()

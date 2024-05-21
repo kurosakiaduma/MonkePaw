@@ -92,9 +92,9 @@ class Symbol:
             self._type = self.node._type
         elif self.node._type == ReturnStatementNode:
             self._type = 'FUNCTION DEFINITION'
-        elif self.node.type == StatementListNode:
+        elif self.node._type == StatementListNode:
             self._type = 'CONTEXT'
-
+        print(f'\nSYMBOL TYPE {self._type}\n')
         return self._type
 
     def __repr__(self):
