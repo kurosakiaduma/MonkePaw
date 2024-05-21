@@ -91,7 +91,10 @@ class Parser:
 
     def statement(self):
         print(f'\nParsing {self.current_token}\n'
-              f'Next is {self.next_token}\n')
+              f'Next is {self.next_token}\n'
+              f'\nSTATEMENTS AND SYMBOL TABLE\n'
+              f'\n{self.symbol_table}\n'
+              f'\n{self.ast}\n')
         if self.current_token.type == LET and self.next_token.type == IDENT:  # type: ignore
             self._consume(LET)
             if self.next_token.type == ASSIGN:
@@ -264,7 +267,8 @@ class Parser:
         self._consume(ASSIGN)
         child = self.expression_statement()
         if not child:
-            self._error()
+            self._error(self.current_token,
+                        f"ASSIGN STATEMENT SYNTAX ERROR: Unexpected token used within assignment -> {self.current_token}")
             return None
         symbol, error = self.symbol_table.lookup(name)
         ident_node = IdentifierNode(node_token, value=child)
@@ -430,7 +434,6 @@ class Parser:
             alternative=alternative
         )
         return if_statement_node
-
     def shunting_yard(self):
         parsed_start: bool = False
         precedence = {
@@ -469,6 +472,8 @@ class Parser:
                           'This is the returned atom from non-expression_flag\n'
                           f'{atom}'
                           '\n')
+                    if self.next_token.type == SEMICOLON:
+                        self._consume(SEMICOLON)
                     return atom
                 print(f'\n**MURKY**\n{atom}\n{token}\n{self.current_token}\n{self.next_token}\n**\n')
                 print(f'\nPARSE SHUNTING\nOPERATOR STACK \n{operator_stack}'
@@ -481,7 +486,8 @@ class Parser:
                     self._error(self.current_token,
                                 message=(f'❌ Usage of {self.current_token.type} in' +
                                          f' expressions is not allowed.'))
-                    del parsed_start, operator_stack, output_stack, operator_node
+                    self.expression_flag = parsed_start = False
+                    del operator_stack, output_stack, operator_node
                     return None
             elif token.type in precedence:
                 try:
