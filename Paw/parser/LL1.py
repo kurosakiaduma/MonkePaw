@@ -20,13 +20,14 @@ class Node:
 
 
 class ProgramNode(Node):
-    def __init__(self, token: Token, value):
+    def __init__(self, token: Token, value: StatementListNode):
         super().__init__(token, value)
         self.name = "Monke_beta_0.1"
+        self.statements = value
 
     @property
     def stmt_list(self):
-        return self.value
+        return self.statements
 
     @stmt_list.getter
     def stmt_list(self):
@@ -115,8 +116,16 @@ class ClockFunctionNode(Node):
 
 
 class CustomContextNode(Node):
-    def __init__(self, token: Token, statement_list: StatementListNode, value):
+    def __init__(self,
+                 token: Token,
+                 statement_list: StatementListNode,
+                 value,
+                 name: str | None = None,
+                 parent=None,
+                 ):
         super().__init__(token, value)
+        self.name = name
+        self.parent = parent
         self.statement_list = statement_list
 
 

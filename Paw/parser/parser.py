@@ -2,11 +2,13 @@ import sys
 import time
 from collections import deque
 from typing import Iterator
+from PrettyPrint import PrettyPrintTree
 from .LL1 import *
 from symbol_table.symbol_table import SymbolTable
 from symbol_table.symbol_table import Symbol
 
 from .p_err import ParseError
+from .p_ast import *
 
 sys.path.append("..")
 # Initialize the global symbol table
@@ -33,6 +35,14 @@ class Parser:
         self.ast: deque[Node] | None = None
         self.errors = deque([])
         self._consume()
+
+    def show_ast(self):
+        pt = PrettyPrintTree(lambda x: x.nodes, lambda x: x.get_val())
+        program_node = self.symbol_table.lookup('PROGRAM')
+        tree = gen_tree(program_node)
+        print('\nHERE IS THE TREE\n\n', tree)
+        print('\nPT TREE\n',pt(tree))
+        return pt(tree)
 
     def _consume(self, expected_type: str | None = None):
         try:
