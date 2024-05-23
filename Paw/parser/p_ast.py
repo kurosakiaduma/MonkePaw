@@ -47,7 +47,13 @@ class Tree:
                 print(f"\nReached end! {child_node}\n{e}\n")
             return self.nodes
         elif isinstance(self.node, LetStatementNode):
-            if isinstance(self.node.value, InfixOperatorNode):
+            if isinstance(self.node.value, (InfixOperatorNode, ExpressionStatementNode)):
+                print(type(self.node.value))
+                breakpoint()
+                node_tree = Tree(self.node.value, self)
+                child_tree = deque([node_tree])
+                return child_tree
+            elif isinstance(self.node.value, IntegerLiteralNode):
                 node_tree = Tree(self.node.value, self)
                 child_tree = deque([node_tree])
                 return child_tree
@@ -93,9 +99,9 @@ class Tree:
         elif isinstance(self.node, LetStatementNode):
             return f'LET: {self.node.name}'
         elif isinstance(self.node, AssignStatementNode):
-            return 'ASSIGNMENT EXPR:'
+            return f'ASSIGNMENT EXPR: {self.node.left} {self.node.operator} {self.node.right}'
         elif isinstance(self.node, ExpressionStatementNode):
-            return f'{self.node.expression}'
+            return f'EXPR NODE: {type(self.node.expression)}'
         elif isinstance(self.node, IfStatementNode):
             return None
         elif isinstance(self.node, IfConditionNode):
