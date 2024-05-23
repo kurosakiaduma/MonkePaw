@@ -37,12 +37,13 @@ class Parser:
         self._consume()
 
     def show_ast(self):
-        pt = PrettyPrintTree(lambda x: x.nodes, lambda x: x.get_val())
-        program_node = self.symbol_table.lookup('PROGRAM')
-        tree = gen_tree(program_node)
-        print('\nHERE IS THE TREE\n\n', tree)
-        print('\nPT TREE\n',pt(tree))
-        return pt(tree)
+        pt = PrettyPrintTree(lambda x: x.get_children(), lambda x: x.get_val())
+        program_symbol, error = self.symbol_table.lookup('PROGRAM')
+        program_node: ProgramNode = program_symbol.node
+        tree = Tree(program_node)
+        ast = gen_tree(tree)
+        print('\nPT TREE\n')
+        return pt(ast)
 
     def _consume(self, expected_type: str | None = None):
         try:
@@ -890,9 +891,6 @@ class Parser:
         Check if a token is an identifier.
         """
         return token.type == IDENT
-
-    def show_ast(self):
-        return self.ast
 
     def check_hanging(self):
         # Hanging semicolons that are preceded by a semicolon
