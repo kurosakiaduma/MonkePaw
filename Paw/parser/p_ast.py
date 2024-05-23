@@ -47,7 +47,11 @@ class Tree:
                 print(f"\nReached end! {child_node}\n{e}\n")
             return self.nodes
         elif isinstance(self.node, LetStatementNode):
-            if len(self.node.value) == 1:
+            if isinstance(self.node.value, InfixOperatorNode):
+                node_tree = Tree(self.node.value, self)
+                child_tree = deque([node_tree])
+                return child_tree
+            elif len(self.node.value) == 1:
                 node_tree = Tree(self.node.value[0], self)
                 child_tree = deque([node_tree])
                 return child_tree
@@ -59,7 +63,7 @@ class Tree:
                 print("\nCHILDREN TREES\n"
                       f"{children_trees}\n")
                 return children_trees
-        elif isinstance(self.node, AssignStatementNode):
+        elif isinstance(self.node, (AssignStatementNode, InfixOperatorNode)):
             operator = Tree(self.node.operator, self)
             child_tree = deque([])
             child_tree.append(operator)
@@ -67,7 +71,7 @@ class Tree:
         elif isinstance(self.node, str):
             print(f'\nHERE IS THE node {self.node}\n')
             try:
-                if self.parent and isinstance(self.parent.node, AssignStatementNode):
+                if self.parent and isinstance(self.parent.node, (AssignStatementNode, InfixOperatorNode)):
                     left = Tree(self.parent.node.left, self)
                     right = Tree(self.parent.node.right, self)
                     children_trees = deque([])
@@ -83,13 +87,13 @@ class Tree:
 
     def get_val(self):
         if isinstance(self.node, ProgramNode):
-            return "Monke PROGRAM"
+            return "PROGRAM: -> Monke"
         elif isinstance(self.node, StatementListNode):
-            return f'{len(self.node.statements)}'
+            return f'STMTS: -> {self.node.name} TOTAL: {len(self.node.statements)}'
         elif isinstance(self.node, LetStatementNode):
-            return f'LET {self.node.name}'
+            return f'LET: {self.node.name}'
         elif isinstance(self.node, AssignStatementNode):
-            return 'ASSIGNMENT NODE'
+            return 'ASSIGNMENT EXPR:'
         elif isinstance(self.node, ExpressionStatementNode):
             return f'{self.node.expression}'
         elif isinstance(self.node, IfStatementNode):
@@ -99,11 +103,11 @@ class Tree:
         elif isinstance(self.node, PrintStatementNode):
             return None
         elif isinstance(self.node, IdentifierNode):
-            return f'{self.node.token.type}: {self.node.name}'
+            return f'IDENT: {self.node.token.type}: {self.node.name}'
         elif isinstance(self.node, IntegerLiteralNode):
             return f'INT: {self.node.token.lexeme}'
         elif isinstance(self.node, InfixOperatorNode):
-            return f'{self.node.left}{self.node.operator}{self.node.right}'
+            return f'INFIX EXPR: {self.node.left.name}{self.node.operator}{self.node.left.name}'
         elif isinstance(self.node, str):
             return f'OPERATOR: {self.node}'
         else:
