@@ -94,7 +94,7 @@ class Symbol:
             self._type = 'FUNCTION DEFINITION'
         elif self.node._type == StatementListNode:
             self._type = 'CONTEXT'
-        print(f'\nSYMBOL TYPE {self._type}\n')
+        print(f'\nTHIS IS SELF.NODE._TYPE {self.node._type}\nSYMBOL TYPE {self._type}\n')
         return self._type
 
     def __repr__(self):

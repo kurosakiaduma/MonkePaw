@@ -93,7 +93,8 @@ def main():
                     print(f'\nHERE IS THE AST\n{ast}\n')
                 elif parser_command in ["show_ast", "sa"]:
                     try:
-                        print(f'\nHERE IS THE AST\n{p.ast}\n')
+                        print(f'\nHERE IS THE Abstract Syntax Tree\n')
+                        p.show_ast()
                     except UnboundLocalError:
                         print("\nPlease parse tokens before displaying AST")
                 elif parser_command in ["show_symbol_table", "sst"]:
