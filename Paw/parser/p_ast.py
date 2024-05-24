@@ -57,6 +57,10 @@ class Tree:
                 node_tree = Tree(self.node.value, self)
                 child_tree = deque([node_tree])
                 return child_tree
+            elif isinstance(self.node.value, LetStatementNode):
+                node_tree = Tree(self.node.value, self)
+                child_tree = deque([node_tree])
+                return child_tree
             elif len(self.node.value) == 1:
                 node_tree = Tree(self.node.value[0], self)
                 child_tree = deque([node_tree])
@@ -99,9 +103,20 @@ class Tree:
         elif isinstance(self.node, LetStatementNode):
             return f'LET: {self.node.name}'
         elif isinstance(self.node, AssignStatementNode):
-            return f'ASSIGNMENT EXPR: {self.node.left} {self.node.operator} {self.node.right}'
+            try:
+                assert(isinstance(self.node.left, IdentifierNode))
+                assert (isinstance(self.node.right, ExpressionStatementNode))
+                return f'ASSIGN EXPR: -> {self.node.left._type}: {self.node.left.name} ' \
+                       f'{self.node.operator} ' \
+                       f'{self.node.right.value._type}: {self.node.right.value.value}'
+            except AssertionError:
+                return f'{self.node.value}'
         elif isinstance(self.node, ExpressionStatementNode):
-            return f'EXPR NODE: {type(self.node.expression)}'
+            print(f'EXPR NODE: {type(self.node.expression)}')
+            if isinstance(self.node.expression, IntegerLiteralNode):
+                return f'{self.node.expression.token.type}: {self.node.expression.value}'
+            elif isinstance(self.node.expression, InfixOperatorNode):
+                return f'{self.node.expression.left.name} {self.node.expression.operator} {self.node.expression.right.name}'
         elif isinstance(self.node, IfStatementNode):
             return None
         elif isinstance(self.node, IfConditionNode):
@@ -109,11 +124,11 @@ class Tree:
         elif isinstance(self.node, PrintStatementNode):
             return None
         elif isinstance(self.node, IdentifierNode):
-            return f'IDENT: {self.node.token.type}: {self.node.name}'
+            return f'{self.node.token.type}: {self.node.name}'
         elif isinstance(self.node, IntegerLiteralNode):
-            return f'INT: {self.node.token.lexeme}'
+            return f'{self.node.value._type} {self.node.name}'
         elif isinstance(self.node, InfixOperatorNode):
-            return f'INFIX EXPR: {self.node.left.name}{self.node.operator}{self.node.left.name}'
+            return f'INFIX EXPR: {self.node.left.name} {self.node.operator} {self.node.left.name}'
         elif isinstance(self.node, str):
             return f'OPERATOR: {self.node}'
         else:

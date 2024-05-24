@@ -40,9 +40,8 @@ class Parser:
         pt = PrettyPrintTree(lambda x: x.get_children(), lambda x: x.get_val())
         program_symbol, error = self.symbol_table.lookup('PROGRAM')
         program_node: ProgramNode = program_symbol.node
-        tree = Tree(program_node)
-        ast = gen_tree(tree)
-        print('\nPT TREE\n')
+        ast = Tree(program_node)
+        print('\nDone generating tree...\n')
         return pt(ast)
 
     def _consume(self, expected_type: str | None = None):

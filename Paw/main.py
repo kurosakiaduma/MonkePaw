@@ -84,13 +84,13 @@ def main():
                     print(f'TOKENS - {parser_lexer.tokens}')
                     p = Parser(parser_lexer.tokens)
                     ast = p.parse()
-                    print(f'\nHERE IS THE AST\n{ast}\n')
+                    print(f'\nHERE IS THE AST STATEMENTS: \n{ast}\n')
                 elif parser_command in ["parse_file", "pf"]:
                     filename = input("Enter the full path of the file: ")
                     parser_lexer = scan(filename=filename)
                     p = Parser(parser_lexer.tokens)
                     ast = p.parse()
-                    print(f'\nHERE IS THE AST\n{ast}\n')
+                    print(f'\nHERE IS THE AST STATEMENTS: \n{ast}\n')
                 elif parser_command in ["show_ast", "sa"]:
                     try:
                         print(f'\nHERE IS THE Abstract Syntax Tree\n')
