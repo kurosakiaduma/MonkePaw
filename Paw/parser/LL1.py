@@ -16,7 +16,10 @@ class Node:
         self.value = value
 
     def __repr__(self):
-        return f"{self.__class__.__name__} (type::= '{self._type}', name::= '{self.name}', value:: ='{self.value}')"
+        return f"{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}',\n" \
+               f"name::= '{self.name}',\n" \
+               f"value::= ('{self.value}')\n"
 
 
 class ProgramNode(Node):
@@ -193,12 +196,12 @@ class FunctionLiteralNode(ExpressionNode):
         self._return_type: Node | None = None
 
     def __repr__(self):
-        return f"\n{self.__class__.__name__} " \
-               f"(type::= '{self._type}', " \
-               f"name::= '{self.name}'," \
-               f"parameters::='{self.parameters}' \n" \
-               f"body:: ='{self.body} \n'" \
-               f"return::='{self._return_type}'\n"
+        return f"\n{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}'\n" \
+               f"name::= '{self.name}'\n" \
+               f"parameters::= '{self.parameters}'\n" \
+               f"body::= '{self.body}\n'" \
+               f"return::= '{self._return_type}'\n"
 
 
 class ParameterNode(Node):
@@ -249,6 +252,15 @@ class PrefixExpressionNode(ExpressionNode):
         self.left = left
         self.right = right
         self.value = value
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}'\n" \
+               f"name::= '{self.name}\n'" \
+               f"left::= ('{self.left}')\n" \
+               f"operator::= ('{self.operator}')\n" \
+               f"right::= ('{self.right}')\n" \
+               f"value::= ('{self.value}')\n"
 
 
 class InfixOperatorNode(Node):
@@ -359,12 +371,13 @@ class InfixOperatorNode(Node):
     #         return value, type(value)
 
     def __repr__(self):
-        return f"{self.__class__.__name__} (type::= '{self._type}', name::= '{self.name}', " \
-               f"left:: ='{self.left}')" \
-               f"operator:: ='{self.operator}')" \
-               f"right:: ='{self.right}')" \
-               f"value:: ='{self.value}')" \
-
+        return f"{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}'\n" \
+               f"name::= '{self.name}'\n" \
+               f"left::= ('{self.left}')\n" \
+               f"operator::= ('{self.operator}')\n" \
+               f"right::= ('{self.right}')\n" \
+               f"value::= ('{self.value}')\n"
 
 
 class AssignStatementNode(InfixOperatorNode):
@@ -382,6 +395,15 @@ class AssignStatementNode(InfixOperatorNode):
         self._type = value.type if type(value) != ExpressionStatementNode else value._type \
             if value.__class__.__name__ == "ExpressionStatementNode" else type(value)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}'\n" \
+               f"name::= '{self.name}'\n" \
+               f"left::= ('{self.left}')\n" \
+               f"operator::= ('{self.operator}')\n" \
+               f"right::= ('{self.right}')\n" \
+               f"value::= ('{self.value}')\n"
+
 
 class GroupedExpressionNode(ExpressionNode):
     def __init__(self, token,
@@ -391,10 +413,18 @@ class GroupedExpressionNode(ExpressionNode):
                              InfixOperatorNode |
                              None = None,
                  value: Any | Node | None = None, ):
-        super().__init__(token, value, value._type)
         self.expression = expression
         self.value = value
         self._type = value._type if value is not None else None
+        super().__init__(token, self.value, self._type)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}'\n" \
+               f"name::= '{self.name}'\n" \
+               f"expression:: ='{self.expression}')\n" \
+               f"type::= '{self._type}')\n" \
+               f"value::= '{self.value}')\n"
 
 
 class PrefixOperatorNode(Node):
@@ -410,7 +440,16 @@ class PrefixOperatorNode(Node):
         self.right = right
         self._type = value._type if value is not None else None
 
-#
+    def __repr__(self):
+        return f"{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}'\n" \
+               f"name::= '{self.name}'\n" \
+               f"left::= ('{self.left}')\n" \
+               f"operator::= ('{self.operator}')\n" \
+               f"right::= ('{self.right}')\n" \
+               f"value::= ('{self.value}')\n"
+
+
 # grammar = {
 #     ProgramNode: [
 #         [StatementListNode],
