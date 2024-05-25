@@ -88,14 +88,27 @@ class Symbol:
         return True
 
     def set_type(self):
+        _type = None
         if self.node._type:
-            self._type = self.node._type
+            _type = self.node._type
         elif self.node._type == ReturnStatementNode:
-            self._type = 'FUNCTION DEFINITION'
+            _type = 'FUNCTION DEFINITION'
         elif self.node._type == StatementListNode:
-            self._type = 'CONTEXT'
-        print(f'\nTHIS IS SELF.NODE._TYPE {self.node._type}\nSYMBOL TYPE {self._type}\n')
+            _type = 'CONTEXT'
+        print(f'\nTHIS IS SELF.NODE._TYPE {self.node._type}\nSYMBOL TYPE {_type}\n')
+        return _type
+
+    @property
+    def type(self):
         return self._type
+
+    @type.getter
+    def type(self):
+        return self._type
+
+    @type.setter
+    def type(self, val):
+        self._type = val
 
     def __repr__(self):
         return f"Symbol(name='{self.name}', type_='{self._type}', context_level={self.context_level})"
