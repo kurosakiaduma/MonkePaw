@@ -83,20 +83,20 @@ def main():
                     parser_lexer = scan(source=statement)
                     print(f'TOKENS - {parser_lexer.tokens}')
                     p = Parser(parser_lexer.tokens)
-                    ast = p.parse()
-                    print(f'\nHERE IS THE AST STATEMENTS: \n{ast}\n')
+                    pst = p.parse()
+                    print(f'\nHERE IS THE PST STATEMENTS: \n{pst}\n')
                 elif parser_command in ["parse_file", "pf"]:
                     filename = input("Enter the full path of the file: ")
                     parser_lexer = scan(filename=filename)
                     p = Parser(parser_lexer.tokens)
-                    ast = p.parse()
-                    print(f'\nHERE IS THE AST STATEMENTS: \n{ast}\n')
+                    pst = p.parse()
+                    print(f'\nHERE IS THE PST STATEMENTS: \n{pst}\n')
                 elif parser_command in ["show_ast", "sa"]:
                     try:
-                        print(f'\nHERE IS THE Abstract Syntax Tree\n')
+                        print(f'\nHERE IS THE Parse Tree\n')
                         p.show_ast()
                     except UnboundLocalError:
-                        print("\nPlease parse tokens before displaying AST")
+                        print("\nPlease parse tokens before displaying Concrete Syntax Tree")
                 elif parser_command in ["show_symbol_table", "sst"]:
                     try:
                         print(p.symbol_table)
