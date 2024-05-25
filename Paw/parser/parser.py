@@ -31,18 +31,22 @@ class Parser:
         self.else_flag: bool = False
         self.var_declaration_flag: bool = False
         self.operator_lookup_flag: bool = False
+        self.context_access_flag: bool = False
 
-        self.ast: deque[Node] | None = None
+        self.pst: deque[Node] | None = None
         self.errors = deque([])
         self._consume()
 
     def show_ast(self):
-        pt = PrettyPrintTree(lambda x: x.get_children(), lambda x: x.get_val())
+        pt = PrettyPrintTree(lambda x: x.get_children(),
+                             lambda x: x.get_val(),
+                             orientation=PrettyPrintTree.Horizontal
+                             )
         program_symbol, error = self.symbol_table.lookup('PROGRAM')
         program_node: ProgramNode = program_symbol.node
-        ast = Tree(program_node)
+        pst = Tree(program_node)
         print('\nDone generating tree...\n')
-        return pt(ast)
+        return pt(pst)
 
     def _consume(self, expected_type: str | None = None):
         try:
@@ -71,12 +75,12 @@ class Parser:
         if not self.current_token:
             self._consume()
 
-        ast = deque([])
+        pst = deque([])
 
         # Don't enter a new context here
         stmt_list_node = StatementListNode(Token('STATEMENTS', 'STATEMENTS',
                                                  None, None, None),
-                                           ast
+                                           pst
                                            )
         program_token = Token('PROGRAM', 'PROGRAM', None, None, None)
 
@@ -88,23 +92,24 @@ class Parser:
 
         print(f'\nInitializing Parser...\nWorking from => {self.current_token} then {self.next_token}\n')
         time.sleep(5)
-        print(f"\n{ast}\n")
+        print(f"\n{pst}\n")
 
         while self.current_token and self.current_token.type != EOF:
             stmt = self.statement()
             if stmt is not None:
-                ast.append(stmt)
-                print(f'\nMain parser\n\nThis is the symbol table\n{self.symbol_table}\nWorking from => {self.current_token} then {self.next_token}\n')
-                print(f"\n{ast}\n")
-            self.ast = ast
-        return ast
+                pst.append(stmt)
+                print(f'\nMain parser\n\nThis is the symbol table\n{self.symbol_table}\nWorking from => '
+                      f'{self.current_token} then {self.next_token}\n')
+                print(f"\n{pst}\n")
+            self.pst = pst
+        return pst
 
     def statement(self):
         print(f'\nParsing {self.current_token}\n'
               f'Next is {self.next_token}\n'
               f'\nSTATEMENTS AND SYMBOL TABLE\n'
               f'\n{self.symbol_table}\n'
-              f'\n{self.ast}\n')
+              f'\n{self.pst}\n')
         if self.current_token.type == LET and self.next_token.type == IDENT:  # type: ignore
             self._consume(LET)
             if self.next_token.type == ASSIGN:
@@ -118,7 +123,7 @@ class Parser:
             if self.next_token.type == ASSIGN:
                 return self.assign_statement()
             elif self.next_token.type == LPAREN:
-                return self.parse_call_statement()
+                return self.parse_call_statement(self.current_token, self.symbol_table)
 
         elif self.current_token.type in (CONTEXT, LBRACE):  # Left curly brace (new context)
             context_name = None
@@ -126,8 +131,8 @@ class Parser:
 
             if self.current_token.type == CONTEXT:
                 self._consume(CONTEXT)
-                context_name = self.current_token.lexeme
                 context_token = self.current_token
+                context_name = context_token.lexeme
                 if context_name in keywords:
                     self._error(token=None, message=(f'Invalid context name {context_name}\n' +
                                                      f'Usage of reserved words to create a new scope is not allowed\n'))
@@ -136,20 +141,20 @@ class Parser:
                 try:
                     context_name = f'{self.symbol_table.context_name}_inner_{self.symbol_table.inners.popleft()}'
                     context_token = Token(context_name,
-                                            context_name,
-                                            self.current_token.line_position,
-                                            self.current_token.begin_position,
-                                            None)
+                                          context_name,
+                                          self.current_token.line_position,
+                                          self.current_token.begin_position,
+                                          None)
                 except IndexError:
                     self._error(token=self.current_token,
                                 message=f"You've reached the limit of inner scopes for this particular parent -> " +
-                                f"{self.symbol_table.name}")
+                                        f"{self.symbol_table.name}")
 
             context_token.type = "CONTEXT"
             self._consume(LBRACE)
             self.symbol_table, new_context_symbol = self.symbol_table.enter_context(context_name,
-                                                                                        context_token
-                                                                                        )
+                                                                                    context_token
+                                                                                    )
             block_stmt = self.block_statement()
             context_node = StatementListNode(context_token, block_stmt)
             self._consume(RBRACE)
@@ -177,7 +182,6 @@ class Parser:
             func_statement_node: FunctionLiteralNode = self.function_statement()
             self.function_flag = False
             return func_statement_node
-
         else:
             return self.expression_statement()
 
@@ -267,6 +271,7 @@ class Parser:
                                     node_name,
                                     children)
         self.check_hanging()
+        self.var_declaration_flag = False
         del node_token, node_name, children
         return let_node
 
@@ -318,9 +323,12 @@ class Parser:
             return None
 
     def print_statement(self):
+        print_token = self.current_token
         self._consume(PRINT)
-        expr = self.expression()
-        self._consume(SEMICOLON)
+        self.call_flag = True
+        expr = self.parse_call_statement(print_token,
+                                         self.symbol_table)
+        self.call_flag = False
         return PrintStatementNode(Token(PRINT, 'print'), expr, None)
 
     def clock_statement(self):
@@ -329,9 +337,20 @@ class Parser:
               f'\n{self.next_token}\n')
         self._consume(CLOCK)
         self._consume(DOT)
-        function_name = self.current_token.lexeme
+        function_token = self.current_token
+        function_name = function_token.lexeme
+        if function_name not in ("CLOCK", "NOW"):
+            self._error(function_token,
+                        f"ClockUsageError: The method '{function_name}' does not exist!")
+            return None
+
+        # Consume the function name
         self._consume()
-        self._consume()
+        # Then consume the left and right parentheses
+        # They clock functions DO NOT take any arguments
+        # They should not be interfaced with any other functions except maybe print
+        self._consume(LPAREN)
+        self._consume(RPAREN)
         self._consume(SEMICOLON)
         return ClockStatementNode(token=Token(CLOCK, 'clock'),
                                   function=function_name,
@@ -349,12 +368,71 @@ class Parser:
         return ReturnStatementNode(Token(RETURN, 'return'), expr)
 
     def expression(self):
-        if self.if_parse_flag:
+        if self.current_token.type == IDENT and self.next_token.type == DOUBLE_COLON:
+            self.context_access_flag = True
+            context_value = self.parse_context_access()
+            self.context_access_flag = False
+            return context_value
+        elif self.if_parse_flag:
             conditions = deque([])
             return self.shunting_yard_if(None,
                                          conditions)
         else:
             return self.shunting_yard()
+
+    def parse_context_access(self):
+        context_token = self.current_token
+        context_name = context_token.lexeme
+        self._consume(IDENT)
+        self._consume(DOUBLE_COLON)
+
+        context_symbol_table: SymbolTable | None = None
+        context_symbol_table, error = self.symbol_table.lookup(context_name)
+
+        if error:
+            self._error(context_token, f"UnboundLocalError: This context -> '{context_name}' does not exist or has"
+                                       "not been defined!.")
+            return None
+        elif self.current_token != IDENT:
+            self._error(self.current_token,
+                        f"ContextAccessError: Contexts can only be interfaced through identifiers!\n"
+                        f"Using '{self.current_token.type}' with context interface not allowed! ")
+
+        else:
+            ident_to_check = self.current_token
+            ident_symbol: Symbol | None = None
+            ident_symbol, error = context_symbol_table.lookup(ident_to_check.lexeme)
+            ident_node = ident_symbol.node
+            if error:
+                self._error(ident_to_check,
+                            f"LookupError: The identifier '{ident_to_check.lexeme}' not in context "
+                            f"'{context_name}'")
+            else:
+                self._consume(IDENT)
+                print(f'\nTHE NODE WAS FOUND\n'
+                      f'\n{ident_node}\n')
+                if self.current_token == SEMICOLON:
+                    try:
+                        if isinstance(ident_node, (IdentifierNode, IntegerLiteralNode, FloatLiteralNode,
+                                                   AssignStatementNode, ExpressionStatementNode, StringLiteralNode,
+                                                   BooleanLiteralNode)):
+                            return ident_node.value
+                        else:
+                            self._error(ident_node,
+                                        f"RetrivalError: Cannot use value of {ident_node} from"
+                                        f"CONTEXT '{context_name}'")
+                    except AttributeError as e:
+                        self._error(ident_to_check, str(e))
+
+                # For situations where a context access is for a function call -> my_context::add(1,2);
+                elif self.current_token == LPAREN:
+                    self.call_flag = True
+                    call = self.parse_call_statement(ident_to_check, context_symbol_table)
+                    print(f'\n**THE CALL FROM CONTEXT**\n'
+                          f'\nCONTEXT: {context_name}\n'
+                          f'\nCALL: {call}\n')
+                    self.call_flag = False
+                    return call
 
     def if_statement(self):
         if_token = self.current_token
@@ -387,9 +465,9 @@ class Parser:
                         else:
                             self._error(token=self.current_token,
                                         message=f"\nUnidentified operator "
-                                        f"'{self.current_token.lexeme}' used in IF statement\n"
-                                        f"Expected one in: {bool_ops}\n"
-                                        f"\n")
+                                                f"'{self.current_token.lexeme}' used in IF statement\n"
+                                                f"Expected one in: {bool_ops}\n"
+                                                f"\n")
                             return None
                     right_operand = self.parse_primary()
                     condition_node = IfConditionNode(left_operand, right_operand, operator_token)
@@ -444,12 +522,13 @@ class Parser:
             alternative=alternative
         )
         return if_statement_node
+
     def shunting_yard(self):
         parsed_start: bool = False
         precedence = {
             PLUS: 2, MINUS: 2,
             ASTERISK: 3, SLASH: 3,
-            '(': 0, ')': 0
+            '(': 0,
         }
 
         operator_stack = deque([])  # Operator stack
@@ -483,6 +562,7 @@ class Parser:
                           f'{atom}'
                           '\n')
                     if self.next_token.type == SEMICOLON:
+                        self._consume()
                         self._consume(SEMICOLON)
                     return atom
                 print(f'\n**MURKY**\n{atom}\n{token}\n{self.current_token}\n{self.next_token}\n**\n')
@@ -523,7 +603,8 @@ class Parser:
                     operator_node = GroupedExpressionNode(token, token.lexeme)
 
                 operator_stack.append(operator_node)
-                print(f'\nPRECEDENCE\nOPERATOR STACK {operator_stack}\n')
+                print(f'\nPRECEDENCE\n'
+                      f'OPERATOR STACK {operator_stack}\n')
                 print(f'\nOUTPUT STACK {output_stack}\n')
                 self._consume()
 
@@ -548,6 +629,9 @@ class Parser:
 
                 grouped_node: GroupedExpressionNode = operator_stack.pop()
                 grouped_node.expression = output_stack.pop()
+                grouped_node.name = f'({grouped_node.expression.left.name} {grouped_node.expression.operator} ' \
+                                    f'{grouped_node.expression.right.name})'
+                output_stack.append(grouped_node)
                 self._consume(RPAREN)
             else:
                 break
@@ -594,13 +678,15 @@ class Parser:
         function_token = self.current_token
         function_name = function_token.lexeme
         print(f'\nFUNCTION NAME: {function_name}\n')
+
         try:
             assert (Parser.is_ident(self.current_token))
             assert (function_name not in keywords)
-            self._consume()
+            self._consume(IDENT)
 
         except AssertionError as e:
             self._error(f'{e}: {function_name} is a Monke keyword! Oop!')
+            return None
 
         if self.current_token.type == LPAREN:
             if self.function_flag and not self.call_flag:
@@ -623,20 +709,20 @@ class Parser:
                           f'Param node params{params_node.parameters}\n')
                     param = ParameterNode(param_token,
                                           param_child,
-                                          len(params_node.parameters)+1)
+                                          len(params_node.parameters) + 1)
 
                     params_node.parameters.append(param)
                     print(f'\nAFTER APPEND\n Param node params{params_node.parameters}\n')
                     if self.current_token.type == COMMA:
-                        self._consume()
+                        self._consume(COMMA)
                         continue
 
                 # Consume the RPAREN indicating the end of parameter definitions
-                self._consume()
+                self._consume(RPAREN)
 
                 function_body = deque([])
                 if self.current_token.type == LBRACE:
-                    self._consume()
+                    self._consume(LBRACE)
                     while self.next_token.type != RBRACE:
                         stmt = self.statement()
                         function_body.append(stmt)
@@ -644,7 +730,8 @@ class Parser:
                             return_node = stmt
                             break
                 else:
-                    self._error()
+                    self._error(self.current_token, "Expected '{' to indicate the opening of the function body!")
+                    return None
 
                 # Complete parsing the function body
                 self._consume(RBRACE)
@@ -670,102 +757,52 @@ class Parser:
                       f'\n{function_node}\n')
 
                 return function_node
-            elif self.call_flag and not self.function_flag:
-                print(f'\nTRIGGERED ARGUMENTS NODE CREATION\n')
-                self._consume()
-                args_node = ArgumentsListNode(Token('ARGUMENTS',
-                                                    'ARGUMENTS',
-                                                    self.current_token.begin_position,
-                                                    self.current_token.line_position),
-                                              )
-
-                while self.current_token.type != RPAREN:
-                    print(
-                        f'\nReading argument -> {self.current_token}\n'
-                        f'Argument node arguments {args_node.arguments}\n')
-                    print(f'\nPARAM TYPE {self.current_token.type}\n')
-                    arg_child = self.expression()
-                    print(f'\nAFTER CALL FUNCTION LITERAL EXPR TOKEN: {self.current_token}\n'
-                          f'CALL NAME: {args_node.name}\n'
-                          f'Param node params{args_node.arguments}\n')
-                    args_node.arguments.append(arg_child)
-                    print(f'\nAFTER APPEND\n Args node params{args_node.arguments}\n')
-                    if self.current_token.type == COMMA:
-                        self._consume()
-                        continue
-
-                    # Consume the RPAREN indicating the end of arguments
-                    self._consume(RPAREN)
-                    self._consume(SEMICOLON)
-
-                    symbol, error = self.symbol_table.lookup(function_name)
-                    if error:
-                        self._error(error)
-                    else:
-                        symbol_function: FunctionLiteralNode = symbol.value
-
-                    call_node = CallExpressionNode(function_token,
-                                                   symbol_function,
-                                                   args_node,
-                                                   SymbolTable(f'call_{function_name}',
-                                                               function_token,
-                                                               self.symbol_table)
-                                                   )
-                    call_symbol = Symbol(call_node,
-                                         self.symbol_table.context_level)
-
-                    symbol, error = self.symbol_table.lookup(call_node.name)
-
-                    self.symbol_table.define(call_node.name, call_symbol)
-
-                    print(f'\nHERE WE MAKE THE CALL NODE'
-                          f'\n{call_node}\n'
-                          '\nHERE IS ITS SYMBOL TABLE\n',
-                          f'\n{self.symbol_table}\n'
-                          '\nFUNCTION\n'
-                          f'\n{function_name}'
-                          '\nCALL SYMBOL\n'
-                          f'\n{call_symbol}'
-                          f'\nARGS NODE\n'
-                          f'\n{args_node}\n\n')
-
-                    return args_node
-
         else:
             self._error()
+            return None
 
         self.function_flag, self.call_flag = False, False
 
-    def parse_call_statement(self):
-        call_token = self.current_token
+    def parse_call_statement(self, call_token: Token, context_table: SymbolTable):
+        call_token = call_token
         function_name = self.current_token.lexeme
-        self._consume()
-        if self.call_flag and self.current_token.type == LPAREN:
+
+        # Assuming the parse function was not called as part of an inner context
+        if self.current_token.type == IDENT:
             self._consume()
+
+        if self.call_flag and self.current_token.type == LPAREN:
+            self._consume(LPAREN)
             args = self.parse_arguments()
             if self.next_token.type != RPAREN:
                 self._error(token=call_token,
                             message=f"Expected ')' after arguments in function call '{function_name}'")
                 return None
             # Find the function symbol in the current symbol table or its ancestors
-            function_symbol: Node | None = self.symbol_table.lookup(function_name)
-            if function_symbol is None:
-                self._error(token=call_token,
-                            message=f"Function '{function_name}' is not defined")
+            function_symbol: Symbol | None = None
+            function_symbol, error = context_table.lookup(function_name)
+            if error:
+                self._error(call_token,
+                            f"Function '{function_name}' is not defined")
                 return None
 
             # Ensure the symbol is a function
-            if not isinstance(function_symbol.value, FunctionLiteralNode):
-                self._error(token=call_token,
-                            message=f"'{function_name}' of type {function_symbol.value} is not a function.")
+            elif not isinstance(function_symbol.node, FunctionLiteralNode):
+                self._error(call_token,
+                            f"'{function_name}' of type {function_symbol._type} is not a function.")
                 return None
+
             # Get the function literal node
-            function_literal_node = function_symbol.value
+            function_literal_node = function_symbol.node
+            print('\nFUNC LITERAL NODE IS\n'
+                  f'\n{function_literal_node}\n')
 
             call_func_node = CallExpressionNode(Token(f"{function_literal_node.name}_call", function_name),
                                                 function_literal_node,
                                                 args,
-                                                None)
+                                                context_table)
+            print('\nCALL FUNC NODE IS\n'
+                  f'\n{call_func_node}\n')
 
             return call_func_node
         else:
@@ -789,7 +826,7 @@ class Parser:
                 arguments=args)
 
         # Here's the key change: Follow LL(1) to ensure ArgumentsListNode
-        while self.current_token.type not in (RPAREN, SEMICOLON):  # Lookahead for closing parenthesis or semicolon
+        while self.current_token.type != RPAREN:  # Lookahead for closing parenthesis
             args.append(self.expression())
             if self.current_token.type != COMMA:
                 break
@@ -822,7 +859,10 @@ class Parser:
                 return basic_node
             elif self.current_token.type == IDENT:
                 if self.next_token.type == LPAREN:
-                    return self.parse_call_statement()
+                    self.call_flag = True
+                    call = self.parse_call_statement(self.current_token, self.symbol_table)
+                    self.call_flag = False
+                    return call
 
                 if self.var_declaration_flag:
                     ident_node = IdentifierNode(self.current_token, None)
@@ -837,12 +877,13 @@ class Parser:
                                           self.symbol_table.context_level)
                     self.symbol_table.define(ident_node.name, ident_symbol)
                     print(f"\nError returned this node {ident_node}\n")
+                    self._error(self.current_token,
+                                f"ArgumentNotDefinedError: Usage of an undeclared identifier as an argument")
+                    return None
                 else:
                     # TODO: HOW CAN CONTROL FLOW GRAPHS AND GRAPH COLORING HELP?
                     print(f"\nLookup returned this node {symbol.node}\n")
                     return symbol.node
-                print(f"\nLookup returned this node {ident_node}\n")
-                return ident_node
         except SyntaxError:
             self._error()
 
@@ -900,5 +941,3 @@ class Parser:
             self._consume(SEMICOLON)
             print(f"\nDONE EATING SEMICOLON\n"
                   f"CHECK HANGING{self}\n")
-
-
