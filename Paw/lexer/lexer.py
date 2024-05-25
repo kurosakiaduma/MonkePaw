@@ -97,8 +97,8 @@ class Lexer:
         elif self.ch == '=':
             if self.peek_char() == '=':
                 ch = self.ch
-                tok = self.new_token(EQ, ch + self.ch)
                 self.read_char()
+                tok = self.new_token(EQ, ch + self.ch)
             else:
                 tok = self.new_token(ASSIGN, self.ch)
         elif self.ch == ";":
@@ -116,8 +116,8 @@ class Lexer:
         elif self.ch == '!':
             if self.peek_char() == '=':
                 ch = self.ch
-                tok = self.new_token(NOT_EQ, (ch + self.ch))
                 self.read_char()
+                tok = self.new_token(NOT_EQ, (ch + self.ch))
             else:
                 tok = self.new_token(BANG, self.ch)
         elif self.ch == '*':
@@ -139,21 +139,24 @@ class Lexer:
         elif self.ch == '<':
             if self.peek_char() == '=':
                 ch = self.ch
-                tok = self.new_token(LT_EQ, (ch + self.ch))
                 self.read_char()
+                tok = self.new_token(LT_EQ, (ch + self.ch))
             else:
                 tok = self.new_token(LT, self.ch)
         elif self.ch == '>':
             if self.peek_char() == '=':
                 ch = self.ch
-                tok = self.new_token(GT_EQ, (ch + self.ch))
                 self.read_char()
+                tok = self.new_token(GT_EQ, (ch + self.ch))
             else:
                 tok = self.new_token(GT, self.ch)
         elif self.ch == '{':
             tok = self.new_token(LBRACE, self.ch)
         elif self.ch == '}':
             tok = self.new_token(RBRACE, self.ch)
+        elif self.ch == ":" and self.peek_char() == ":":
+            self.read_char()
+            tok = self.new_token(DOUBLE_COLON, (self.ch * 2))
         elif self.ch == 0:
             tok = self.new_token(EOF, "")
         else:

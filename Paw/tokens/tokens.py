@@ -11,10 +11,12 @@ class Token:
         self.symbol_table_ref = symbol_table_ref
 
     def __str__(self) -> str:
-        return f'<Type:{self.type}, Lexeme:{self.lexeme}, BeginPosition:{self.begin_position}, LinePosition:{self.line_position}>'
+        return f'<Type-> {self.type}, Lexeme-> {self.lexeme}, ' \
+               f'BeginPosition-> {self.begin_position}, LinePosition-> {self.line_position}>'
 
     def __repr__(self) -> str:
-        return f'<Type:{self.type}, Lexeme:{self.lexeme}, BeginPosition:{self.begin_position}, LinePosition:{self.line_position}>'
+        return f'<Type-> {self.type}, Lexeme-> {self.lexeme}, ' \
+               f'BeginPosition-> {self.begin_position}, LinePosition-> {self.line_position}>'
 
 # context depth restriction
 MAX_CONTEXT_DEPTH = 5
@@ -54,6 +56,8 @@ RPAREN = ")"
 LBRACE = "{"
 RBRACE = "}"
 
+# Context accessor
+DOUBLE_COLON = "::"
 # Keywords
 CONTEXT = "CONTEXT"
 GLOBAL = "GLOBAL"
