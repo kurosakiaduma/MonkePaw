@@ -29,7 +29,8 @@ class Tree:
             print(f"\nI am at node :-> {self.node}\n"
                   f"\nNODE VALUE {self.node.value}\n")
         else:
-            print(f"\nELSE BLOCK\nI am at tree :-> {self.node}\n"
+            print(f"\nELSE BLOCK\n"
+                  f"I am at tree :-> {self.node}\n"
                   "\nTREE VALUE {self.node.value}\n")
 
         if isinstance(self.node, ProgramNode):
@@ -61,6 +62,10 @@ class Tree:
                 node_tree = Tree(self.node.value, self)
                 child_tree = deque([node_tree])
                 return child_tree
+            elif isinstance(self.node.value, GroupedExpressionNode):
+                node_tree = Tree(self.node.value, self)
+                child_tree = deque([node_tree])
+                return child_tree
             elif len(self.node.value) == 1:
                 node_tree = Tree(self.node.value[0], self)
                 child_tree = deque([node_tree])
@@ -73,7 +78,7 @@ class Tree:
                 print("\nCHILDREN TREES\n"
                       f"{children_trees}\n")
                 return children_trees
-        elif isinstance(self.node, (AssignStatementNode, InfixOperatorNode)):
+        elif isinstance(self.node, (AssignStatementNode, InfixOperatorNode, PrefixOperatorNode)):
             operator = Tree(self.node.operator, self)
             child_tree = deque([])
             child_tree.append(operator)
@@ -126,13 +131,17 @@ class Tree:
         elif isinstance(self.node, IdentifierNode):
             return f'{self.node.token.type}: {self.node.name}'
         elif isinstance(self.node, IntegerLiteralNode):
+            print(f"\nBROKE HERE "
+                  f"\n{self.node}"
+                  f"\ntype {type(self.node)}")
             return f'{self.node.value._type} {self.node.name}'
         elif isinstance(self.node, InfixOperatorNode):
-            return f'INFIX EXPR: {self.node.left.name} {self.node.operator} {self.node.left.name}'
+            return f'INFIX EXPR: {self.node.left.name} {self.node.operator} {self.node.right.name}'
         elif isinstance(self.node, str):
             return f'OPERATOR: {self.node}'
         else:
-            return self.node.token
+            print(self.node)
+            return self.node.name
 
     def add_child(self, child):
         self.nodes.append(child)
