@@ -16,7 +16,7 @@ class Node:
         self.value = value
 
     def __repr__(self):
-        return f"{self.__class__.__name__}\n" \
+        return f"\n{self.__class__.__name__}\n" \
                f"(type::= '{self._type}',\n" \
                f"name::= '{self.name}',\n" \
                f"value::= ('{self.value}')\n"
@@ -86,6 +86,13 @@ class IfStatementNode(StatementNode):
 
         self.value = None
 
+    def __repr__(self):
+        return f'\n{self.__class__.__name__}\n' \
+               f'\n{self._type} {self.token}\n' \
+               f'\n{self.conditions}\n' \
+               f'\n{self.alternative}\n' \
+               f'\n{self.value}\n'
+
 
 class IfConditionNode(Node):
     def __init__(self,
@@ -98,6 +105,15 @@ class IfConditionNode(Node):
         self.operator = operator
         super().__init__(self.operator, None)
         self.consequence = statements
+
+    def __repr__(self):
+        return f'\n{self.__class__.__name__}\n' \
+               f'\n{self._type} {self.token}\n' \
+               f'\n{self.left}\n' \
+               f'\n{self.right}\n' \
+               f'{self.operator}' \
+               f'{self.consequence}' \
+               f'\n{self.value}\n'
 
 
 class PrintStatementNode(StatementNode):

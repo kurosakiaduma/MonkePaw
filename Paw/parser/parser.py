@@ -183,6 +183,8 @@ class Parser:
             self.function_flag = False
             return func_statement_node
         else:
+            bool(self.current_token.type == IF)
+            breakpoint()
             return self.expression_statement()
 
     def block_statement(self):
@@ -442,11 +444,48 @@ class Parser:
         if_statement_node = self.build_if_statement_node(if_token, conditions)
         # Parse the condition using the shunting yard
         # algorithm for 'if'
-        self.shunting_yard_if(if_statement_node, conditions)
+        self.shunting_yard_if(if_statement_node)
         return if_statement_node
 
-    def shunting_yard_if(self, if_statement: IfStatementNode | None,
-                         conditions):
+    def build_condition_node(self):
+        self._consume(LPAREN)
+        left_operand = self.parse_primary()
+        print('\nTHIS IS THE LEFT OPERAND'
+              f'\n{left_operand}\n'
+              f'\n{self.current_token} {self.next_token}\n')
+        # Consume the first operand
+        self._consume()
+        if self.current_token in bool_ops:
+            operator_token = self.current_token
+            self._consume()
+        else:
+            self._error(token=self.current_token,
+                        message=f"\nUnidentified operator "
+                                f"'{self.current_token.lexeme}' used in IF statement\n"
+                                f"Expected one in: {bool_ops}\n"
+                                f"\n")
+            return None
+        right_operand = self.parse_primary()
+        print('\nTHIS IS THE RIGHT OPERAND'
+              f'\n{right_operand}\n')
+        copyright()
+        # Consume the second operand
+        self._consume()
+        self._consume(RPAREN)
+        self._consume(LBRACE)
+        condition_statements = deque([])
+        while self.current_token.type != RBRACE:
+            condition_statements.append(self.statement())
+        condition_node = IfConditionNode(left_operand,
+                                         right_operand,
+                                         operator_token,
+                                         condition_statements)
+        self._consume(RBRACE)
+        return condition_node
+
+    def shunting_yard_if(self,
+                         if_statement: IfStatementNode | None
+                         ):
         while self.current_token.type != SEMICOLON:
             token = self.current_token
             if token.type == LPAREN:
@@ -455,50 +494,21 @@ class Parser:
                 else:
                     # Flip the if parse flag to indicate that we are parsing an if statement
                     self.if_parse_flag = not self.if_parse_flag
-                while True:
-                    left_operand = self.parse_primary()
-                    while True:
-                        if self.current_token in bool_ops:
-                            operator_token = self.current_token
-                            self._consume()
-                            break
-                        else:
-                            self._error(token=self.current_token,
-                                        message=f"\nUnidentified operator "
-                                                f"'{self.current_token.lexeme}' used in IF statement\n"
-                                                f"Expected one in: {bool_ops}\n"
-                                                f"\n")
-                            return None
-                    right_operand = self.parse_primary()
-                    condition_node = IfConditionNode(left_operand, right_operand, operator_token)
-                    self._consume(RPAREN)
-                    conditions.append(condition_node)
-                    if token.type == LBRACE:
-                        self._consume(LBRACE)
-                        condition_statements = deque([])
-                        while self.current_token.type != RBRACE:
-                            condition_statements.append(self.statement())
-                        # Update the latest IfConditionNode in the output stack with the statements
-                        if condition_statements and isinstance(conditions[-1], IfConditionNode):
-                            conditions[-1].statements = condition_statements
-                        else:
-                            # Handle cases where there's an empty 'else' block
-                            pass
-                        self._consume(RBRACE)
-                        if self.if_parse_flag and not (self.else_flag or self.else_if_flag):
-                            if_statement.conditions.append(condition_node)
-                            break
-                        elif self.else_if_flag or self.else_flag:
-                            return condition_node
+                condition_node = self.build_condition_node()
+
+                if_statement.conditions.append(condition_node)
 
             elif token.type == ELSE and self.next_token.type == IF:
                 self._consume(ELSE)
-                condition_node = self.expression()
+                self._consume(IF)
+                condition_node = self.build_condition_node()
                 # Create an IfConditionNode and append it to the output stack
-                if_statement.conditions.append(condition_node)  # Placeholder for statements
+                if_statement.conditions.append(condition_node)
+
             # TODO: NEED TO TEST WHETHER THESE CODE BLOCKS CORRECTLY CLOSE THE IF BLOCK
             elif token.type == ELSE and self.next_token.type == LBRACE:
                 alternative = StatementListNode(self.current_token, deque())
+                self._consume(ELSE)
                 self._consume(LBRACE)
                 while self.current_token.type != RBRACE:
                     alternative.statements.append(self.statement())
@@ -506,8 +516,13 @@ class Parser:
                 if_statement.conditions.append(alternative)
             else:
                 # Handle other tokens or errors
-                self._error()
-            self._consume()  # Move to the next token
+                print(if_statement)
+                breakpoint()
+                self._error(self.current_token)
+
+        # Done parsing the if, else if or else blocks
+        self._consume(SEMICOLON)  # Move to the next token
+        self.if_parse_flag = not self.if_parse_flag
         return True
 
     @staticmethod
