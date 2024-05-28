@@ -46,6 +46,19 @@ class StatementListNode(Node):
         super().__init__(token, statements)
         self.statements = statements
 
+    def __str__(self):
+        string = f'\nStatementListNode\n' \
+                 f'\nname::= {self.name}\n'
+        string += f'\nvalue::= {repr(self.value)}\n'
+        string += f'***END***\n'
+        return string
+
+    def __repr__(self):
+        string = f'\n{self.__class__.__name__} name/type-> {self.name}\n'
+        string += f'\n{repr(self.value)}\n'
+        string += f'***END***\n'
+        return string
+
 
 class StatementNode(Node):
     pass
@@ -56,6 +69,21 @@ class LetStatementNode(StatementNode):
         super().__init__(token, value)
         self.name = name
         self.value = value
+
+    def __str__(self):
+        string = f'***LetStatementNode***' \
+                 f'\n{self.__class__.__name__} {self.token}\n' \
+                 f'\n{self.name}\n' \
+                 f'{repr(self.value)}' \
+                 '***END***\n'
+        return string
+
+    def __repr__(self):
+        string = f'let(' \
+                 f'{self.name}) = ' \
+                 f'{repr(self.value)}' \
+                 '***END***\n'
+        return string
 
 
 class ExpressionStatementNode(StatementNode):
@@ -86,12 +114,18 @@ class IfStatementNode(StatementNode):
 
         self.value = None
 
+    def __str__(self):
+        return f'\n{self.__class__.__name__}' \
+               f' {self.token}\n' \
+               f'\nconditions::= {self.conditions}\n' \
+               f'\nalternative::= {repr(self.alternative)}\n' \
+               f'\nvalue::= {self.value}\n'
+
     def __repr__(self):
-        return f'\n{self.__class__.__name__}\n' \
-               f'\n{self._type} {self.token}\n' \
-               f'\n{self.conditions}\n' \
-               f'\n{self.alternative}\n' \
-               f'\n{self.value}\n'
+        return f'{self.__class__.__name__}' \
+               f'{self.token}\n' \
+               f' with {len(self.conditions)} conditions' \
+               '\n***END***\n'
 
 
 class IfConditionNode(Node):
@@ -106,20 +140,53 @@ class IfConditionNode(Node):
         super().__init__(self.operator, None)
         self.consequence = statements
 
-    def __repr__(self):
+    def __str__(self):
         return f'\n{self.__class__.__name__}\n' \
                f'\n{self._type} {self.token}\n' \
-               f'\n{self.left}\n' \
-               f'\n{self.right}\n' \
-               f'{self.operator}' \
-               f'{self.consequence}' \
-               f'\n{self.value}\n'
+               f'\nLeft: {repr(self.left)}\n' \
+               f'\nRight: {repr(self.right)}\n' \
+               f'\nOperator: {self.operator}\n' \
+               f'\nConsequence: {self.consequence}\n' \
+               f'\nValue: {self.value}\n' \
+               '***END***\n'
+
+    def __repr__(self):
+        return f'\n{self.__class__.__name__}' \
+               f'\nleft::= {repr(self.left)} ' \
+               f'operator::= {self.operator.lexeme} ' \
+               f'\nright::= {repr(self.right)}\n' \
+               f'consequence::= {repr(self.consequence)}\n' \
+               f'value::= {repr(self.value)}\n' \
+               '***END***\n'
 
 
 class PrintStatementNode(StatementNode):
-    def __init__(self, token: Token, expression, value):
+
+    def __init__(self, token: Token, expression: StatementListNode | ArgumentsListNode, value: int | str | float | bool | None):
         super().__init__(token, value)
         self.expression = expression
+        self.value = None
+        self.parameters: ParametersNode | deque[ParametersNode] = deque([])
+
+    def execute(self, expression):
+        if not self.value:
+            self.value = expression
+            #self.value
+        else:
+            return self.value
+
+    def __str__(self):
+        return f'\n{self.__class__.__name__}\n' \
+               f'\n{self._type} {self.token}\n' \
+               f'\n{self.expression}\n' \
+               f'\n{self.parameters}\n' \
+               f'\n{self.value}\n' \
+               '***END***\n'
+
+    def __repr__(self):
+        string = f'\n{self.token.lexeme}->{repr(self.expression)}' \
+                 '\n***END***\n'
+        return string
 
 
 class ClockStatementNode(StatementNode):
@@ -168,12 +235,34 @@ class IntegerLiteralNode(ExpressionNode):
         super().__init__(token, value, self._type)
         self.value = value
 
+    def __str__(self):
+        return f'\n{self.__class__.__name__}\n' \
+               f'\n{self._type} {self.token.lexeme}\n' \
+               f'\n{self.value}\n' \
+               '***END***\n'
+
+    def __repr__(self):
+        return f'\n{self._type}:-> {self.value}' \
+               f'\n***END***\n'
+
 
 class FloatLiteralNode(ExpressionNode):
     def __init__(self, token: Token, value):
         self._type = FLOAT
         super().__init__(token, value, self._type)
         self.value = value
+
+    def __str__(self):
+        return f'\n{self.__class__.__name__}\n' \
+               f'\n{self._type} {self.token.lexeme}\n' \
+               f'\n{self.value}\n' \
+               '***END***\n'
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}' \
+               f'{self._type}:-> {self.value}' \
+               '\n***END***\n'
+
 
 
 class StringLiteralNode(ExpressionNode):
@@ -182,12 +271,34 @@ class StringLiteralNode(ExpressionNode):
         super().__init__(token, value, self._type)
         self.value = value
 
+    def __str__(self):
+        return f'\n{self.__class__.__name__}\n' \
+               f'\n{self._type} {self.token.lexeme}\n' \
+               f'\n{self.value}\n'\
+               '***END***\n'
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}' \
+               f'{self._type}:-> {self.value}' \
+               '\n***END***\n'
+
 
 class BooleanLiteralNode(ExpressionNode):
     def __init__(self, token: Token, value):
         self._type = BOOL
         super().__init__(token, value, self._type)
         self.value = value
+
+    def __str__(self):
+        return f'\n{self.__class__.__name__}\n' \
+               f'\n{self._type} {self.token.lexeme}\n' \
+               f'\n{self.value}\n' \
+               '***END***\n'
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}' \
+               f'{self._type}:-> {self.value}\n' \
+               '***END***\n'
 
 
 class IdentifierNode(ExpressionNode):
@@ -196,6 +307,17 @@ class IdentifierNode(ExpressionNode):
         self._type = IDENT
         super().__init__(token, value, self._type)
         self.value = value
+
+    def __str__(self):
+        return f'\n{self.__class__.__name__}\n' \
+               f'\n{self._type} {self.name}\n' \
+               f'\n{self.value}\n' \
+               '***END***\n'
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}' \
+               f'{self._type}:-> {self.name} -> {self.value}\n' \
+               '***END***\n'
 
 
 class FunctionLiteralNode(ExpressionNode):
@@ -211,13 +333,21 @@ class FunctionLiteralNode(ExpressionNode):
         self.body = body
         self._return_type: Node | None = None
 
-    def __repr__(self):
+    def __str__(self):
         return f"\n{self.__class__.__name__}\n" \
                f"(type::= '{self._type}'\n" \
                f"name::= '{self.name}'\n" \
                f"parameters::= '{self.parameters}'\n" \
                f"body::= '{self.body}\n'" \
-               f"return::= '{self._return_type}'\n"
+               f"return::= '{self._return_type}'\n" \
+               '***END***\n'
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}" \
+               f" name::= '{self.name}'" \
+               f" parameters::= '{self.parameters}'" \
+               f" return::= '{self._return_type}'\n" \
+               '***END***\n'
 
 
 class ParameterNode(Node):
@@ -225,6 +355,22 @@ class ParameterNode(Node):
         super().__init__(token, None)
         self.child = child
         self.position = position
+
+    def __str__(self):
+        return f"\n{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}'\n" \
+               f"name::= '{self.name}'\n" \
+               f"child::= '{self.child}'\n" \
+               f"position::= '{self.position}\n'" \
+               '***END***\n'
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}" \
+               f" _type = {self.token.type}" \
+               f" name::= '{self.name}'" \
+               f" parameters::= '{self.child}'" \
+               f" return::= '{self.position}'" \
+               '\n***END***\n'
 
 
 class ParametersNode(Node):
@@ -251,6 +397,26 @@ class ArgumentsListNode(Node):
         super().__init__(token, arguments)
         self.arguments = arguments
 
+    def __str__(self):
+        return f"\n{self.__class__.__name__}\n" \
+               f"(type::= '{self._type}'\n" \
+               f"name::= '{self.name}'\n" \
+               f"child::= '{repr(self.arguments)}'\n" \
+               '***END***\n'
+
+    def __repr__(self):
+        string = '('
+        args = iter(self.arguments)
+        while True:
+            try:
+                arg = next(args)
+                string += f'{arg.name}, '
+            except StopIteration:
+                temp = string.split(', ')
+                string = ','.join(i for i in temp)
+                string += ')'
+                return string
+
 
 class ReturnStatementNode(StatementNode):
     def __init__(self, token: Token, expression: ExpressionNode,
@@ -261,7 +427,10 @@ class ReturnStatementNode(StatementNode):
 
 
 class PrefixExpressionNode(ExpressionNode):
-    def __init__(self, token, operator, left: Any, right: Node,
+    def __init__(self,
+                 token,
+                 operator,
+                 left: Any, right: Node,
                  value: Any | Node | None = None):
         super().__init__(token, value)
         self.operator = operator
@@ -269,14 +438,25 @@ class PrefixExpressionNode(ExpressionNode):
         self.right = right
         self.value = value
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}\n" \
+    def __str__(self):
+        return f"\n{self.__class__.__name__}\n" \
                f"(type::= '{self._type}'\n" \
                f"name::= '{self.name}\n'" \
                f"left::= ('{self.left}')\n" \
-               f"operator::= ('{self.operator}')\n" \
+               f"operator::= ('{self.operator.lexeme}')\n" \
                f"right::= ('{self.right}')\n" \
-               f"value::= ('{self.value}')\n"
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
+
+    def __repr__(self):
+        return f"\n{self.__class__.__name__}" \
+               f"type::= {self._type}\n" \
+               f"name::= {self.name}\n" \
+               f"left::= {repr(self.left)} " \
+               f"operator::= {self.operator.lexeme} " \
+               f"right::= {repr(self.right)}\n" \
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
 
 
 class InfixOperatorNode(Node):
@@ -386,14 +566,25 @@ class InfixOperatorNode(Node):
     #         value = None
     #         return value, type(value)
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}\n" \
+    def __str__(self):
+        return f"\n{self.__class__.__name__}\n" \
                f"(type::= '{self._type}'\n" \
-               f"name::= '{self.name}'\n" \
+               f"name::= '{self.name}\n'" \
                f"left::= ('{self.left}')\n" \
-               f"operator::= ('{self.operator}')\n" \
+               f"operator::= ('{self.operator.name}')\n" \
                f"right::= ('{self.right}')\n" \
-               f"value::= ('{self.value}')\n"
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
+
+    def __repr__(self):
+        return f"\n{self.__class__.__name__}" \
+               f"type::= {self._type}\n" \
+               f"name::= {self.name}\n" \
+               f"left::= {repr(self.left)} " \
+               f"operator::= {self.operator.name} " \
+               f"right::= {repr(self.right)}\n" \
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
 
 
 class AssignStatementNode(InfixOperatorNode):
@@ -411,14 +602,25 @@ class AssignStatementNode(InfixOperatorNode):
         self._type = value.type if type(value) != ExpressionStatementNode else value._type \
             if value.__class__.__name__ == "ExpressionStatementNode" else type(value)
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}\n" \
+    def __str__(self):
+        return f"\n{self.__class__.__name__}\n" \
                f"(type::= '{self._type}'\n" \
-               f"name::= '{self.name}'\n" \
+               f"name::= '{self.name}\n'" \
                f"left::= ('{self.left}')\n" \
                f"operator::= ('{self.operator}')\n" \
                f"right::= ('{self.right}')\n" \
-               f"value::= ('{self.value}')\n"
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
+
+    def __repr__(self):
+        return f"\n{self.__class__.__name__}" \
+               f"type::= {self._type}\n" \
+               f"name::= {self.name}\n" \
+               f"left::= {repr(self.left)} " \
+               f"operator::= {self.operator} " \
+               f"right::= {repr(self.right)}\n" \
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
 
 
 class GroupedExpressionNode(ExpressionNode):
@@ -434,13 +636,21 @@ class GroupedExpressionNode(ExpressionNode):
         self._type = value._type if value is not None else None
         super().__init__(token, self.value, self._type)
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}\n" \
+    def __str__(self):
+        return f"\n{self.__class__.__name__}\n" \
                f"(type::= '{self._type}'\n" \
-               f"name::= '{self.name}'\n" \
-               f"expression:: ='{self.expression}')\n" \
-               f"type::= '{self._type}')\n" \
-               f"value::= '{self.value}')\n"
+               f"name::= '{self.name}\n'" \
+               f"expression::= ('{repr(self.expression)}')\n" \
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
+
+    def __repr__(self):
+        return f"\n{self.__class__.__name__}" \
+               f"type::= {self._type}\n" \
+               f"name::= {self.name}\n" \
+               f"expression::= {repr(self.expression)} " \
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
 
 
 class PrefixOperatorNode(Node):
@@ -456,14 +666,25 @@ class PrefixOperatorNode(Node):
         self.right = right
         self._type = value._type if value is not None else None
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}\n" \
+    def __str__(self):
+        return f"\n{self.__class__.__name__}\n" \
                f"(type::= '{self._type}'\n" \
-               f"name::= '{self.name}'\n" \
+               f"name::= '{self.name}\n'" \
                f"left::= ('{self.left}')\n" \
-               f"operator::= ('{self.operator}')\n" \
+               f"operator::= ('{self.operator.token.lexeme}')\n" \
                f"right::= ('{self.right}')\n" \
-               f"value::= ('{self.value}')\n"
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
+
+    def __repr__(self):
+        return f"\n{self.__class__.__name__}" \
+               f"type::= {self._type}\n" \
+               f"name::= {self.name}\n" \
+               f"left::= {repr(self.left)} " \
+               f"operator::= {self.operator.token.lexeme} " \
+               f"right::= {repr(self.right)}\n" \
+               f"value::= ('{self.value}')\n" \
+               '***END***\n'
 
 
 # grammar = {
