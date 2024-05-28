@@ -9,17 +9,27 @@ from .LL1 import Node, ProgramNode, LetStatementNode, StatementListNode, Express
 
 class Tree:
     def __init__(self,
-                 node: Node | ProgramNode | str | int | float | bool,
+                 node: Node | deque[Node] | ProgramNode | str | int | float | bool,
                  parent: Tree | None = None):
+
         self.node = node
+        if isinstance(self.node, Node):
+            self.name = f'{self.node}'
+        else:
+            self.name = f'{str(self.node)}'
+
         self.parent: Tree | None = parent
         self.nodes = self.populate_children()
+
         print(f"\nI am at node :-> {self.node}\n")
         print(f"\nSELF.NODES {self.nodes}\n")
         if isinstance(self.node, str):
             print(f"\nTREE NODE VALUE {self.node}\n")
-        else:
+        elif isinstance(self.node, Node):
             print(f"\nTREE NODE VALUE {self.node.value}\n")
+        elif isinstance(self.node, deque):
+            print(f"\nTREE NODE VALUE {self.node}\n")
+
     def populate_children(self):
         """
         This custom function helps to customize how each node is represented
@@ -35,7 +45,7 @@ class Tree:
 
         if isinstance(self.node, ProgramNode):
             # Create a copy of the deque to avoid mutation during iteration
-            prog_stmts = self.node.value
+            prog_stmts: StatementListNode = self.node.value
             self.nodes: Deque = deque([])
             children_nodes = iter(prog_stmts.statements)
             try:
@@ -71,6 +81,30 @@ class Tree:
             child_tree = deque([])
             child_tree.append(operator)
             return child_tree
+        elif isinstance(self.node, IfStatementNode):
+            if_tree = deque([])
+            conditions: deque[IfConditionNode | StatementListNode] = self.node.conditions
+            for condition in conditions:
+                if isinstance(condition, IfConditionNode):
+                    operator_node = Tree(condition.operator.lexeme, self)
+                    left_op_tree = Tree(condition.left, operator_node)
+                    right_op_tree = Tree(condition.right, operator_node)
+                    consequence_node = Tree(condition.consequence, operator_node)
+                    operator_node.add_child([left_op_tree, right_op_tree, consequence_node])
+                    if_tree.append(operator_node)
+                elif isinstance(condition, StatementListNode):
+                    alternative_node = Tree(condition, self)
+                    if_tree.append(alternative_node)
+            return if_tree
+
+        elif isinstance(self.node, StatementListNode):
+            statement_tree = deque([])
+            child_nodes = self.node.statements
+            for child in child_nodes:
+                child_tree = Tree(child, self)
+                statement_tree.append(child_tree)
+            return statement_tree
+
         elif isinstance(self.node, str):
             print(f'\nHERE IS THE node {self.node}\n')
             try:
@@ -79,9 +113,33 @@ class Tree:
                     right = Tree(self.parent.node.right, self)
                     children_trees = deque([])
                     children_trees.extend([left, right])
-                return children_trees
+                    return children_trees
+                elif self.parent and isinstance(self.parent.node, (IfStatementNode, IfConditionNode,
+                                                                   ArgumentsListNode)):
+                    return deque([])
+                elif self.parent and isinstance(self.parent.node, PrintStatementNode):
+                    return deque([])
+
             except UnboundLocalError:
+                print("\nABOUT TO BREAK\n")
                 breakpoint()
+
+        elif isinstance(self.node, PrintStatementNode):
+            print_tree = deque([])
+            child_tree = Tree(self.node.expression, self)
+            print_tree.append(child_tree)
+            return print_tree
+
+        elif isinstance(self.node, ArgumentsListNode):
+            args_tree = deque([])
+            args_tree.append(Tree(self.node.token.lexeme, self))
+            return args_tree
+        elif isinstance(self.node, deque):
+            deque_tree = deque([])
+            for child_node in self.node:
+                child_tree = Tree(child_node, self)
+                deque_tree.append(child_tree)
+            return deque_tree
         else:
             return deque([])
 
@@ -104,20 +162,38 @@ class Tree:
                        f'{self.node.right.value._type}: {self.node.right.value.value}'
             except AssertionError:
                 return f'{self.node.value}'
+
         elif isinstance(self.node, ExpressionStatementNode):
             print(f'EXPR NODE: {type(self.node.expression)}')
             if isinstance(self.node.expression, IntegerLiteralNode):
                 return f'{self.node.expression.token.type}: {self.node.expression.value}'
             elif isinstance(self.node.expression, InfixOperatorNode):
                 return f'{self.node.expression.left.name} {self.node.expression.operator} {self.node.expression.right.name}'
+
         elif isinstance(self.node, IfStatementNode):
-            return None
+            return f'{self.node.name}'
+
         elif isinstance(self.node, IfConditionNode):
-            return None
+            return f'left: {self.node.left} bool_op: {self.node.operator} right: {self.node.right}'
+
         elif isinstance(self.node, PrintStatementNode):
-            return None
+            string = f'{self.node.name}('
+            if isinstance(self.node.expression, ArgumentsListNode):
+                args = iter(self.node.expression.arguments)
+                try:
+                    while True:
+                        arg = next(args)
+                        string += f'{arg.token.lexeme}, '
+                except StopIteration:
+                    string += ')'
+                    print('\nDone working on args presentation\n'
+                          f'\n{string}\n')
+            elif isinstance(self.node.expression, StatementListNode):
+                string = f'STMTS: -> {self.node.name} TOTAL: {len(self.node.expression.statements)}'
+            return string
+
         elif isinstance(self.node, IdentifierNode):
-            return f'{self.node.token.type}: {self.node.name}'
+            return f'{self.node.token.type}: {self.node.token.lexeme}'
         elif isinstance(self.node, IntegerLiteralNode):
             print(f"\nBROKE HERE "
                   f"\n{self.node}"
@@ -127,13 +203,45 @@ class Tree:
             return f'INFIX EXPR: {self.node.left.name} {self.node.operator} {self.node.right.name}'
         elif isinstance(self.node, str):
             return f'OPERATOR: {self.node}'
+        elif isinstance(self.node, deque):
+            return f'{self.node}'
         else:
             print(self.node)
-            return self.node.name
+            return f'{self.node}'
 
     def add_child(self, child):
-        self.nodes.append(child)
+        if isinstance(child, Tree):
+            self.nodes.append(child)
+        elif isinstance(child, list):
+            self.nodes.extend(child)
         return child
+
+    def __str__(self):
+        return f"Tree(Node: {self.node.name}, " \
+               f"\nParent: {self.parent.node.name}, " \
+               f"\nNodes: {self.nodes})\n"
+
+    def __repr__(self):
+        if isinstance(self.parent, (str, int, float)):
+            string = f"Tree(Node: {repr(self.node)}, " \
+                     f"\nParent: {repr(self.parent)}, " \
+                     f"\nNodes: {repr(self.nodes)}) \n"
+
+        elif isinstance(self.parent, Node):
+            string = f"Tree(Node: {repr(self.node.name)}, " \
+                     f"\nParent: {repr(self.parent.value.name)}, " \
+                     f"\nNodes: {repr(self.nodes)}) \n"
+
+        elif isinstance(self.parent, Tree):
+            string = f"Tree(Node: {repr(self.name)}, " \
+                     f"\nParent: {repr(self.parent.name)}, " \
+                     f"\nNodes: {repr(self.nodes)}) \n"
+
+        else:
+            string = f"Tree(Node: {repr(self.node)}, " \
+                     f"\nParent: {repr(self.parent.node)}, " \
+                     f"\nNodes: {repr(self.nodes)}) \n"
+        return string
 
 
 def gen_tree(tree: Tree):
