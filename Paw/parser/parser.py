@@ -25,6 +25,7 @@ class Parser:
         # Critical Section flags for each construct as required
         self.function_flag = None
         self.call_flag: bool | None = None
+        self.print_flag: bool | None = None
         self.expression_flag: bool | None = None
         self.if_parse_flag: bool = False
         self.else_if_flag: bool = False
@@ -32,6 +33,19 @@ class Parser:
         self.var_declaration_flag: bool = False
         self.operator_lookup_flag: bool = False
         self.context_access_flag: bool = False
+        self.args_flag: bool = False
+
+        self.critical_flags = [self.call_flag,
+                               self.expression_flag,
+                               self.if_parse_flag,
+                               self.else_if_flag,
+                               self.else_flag,
+                               self.var_declaration_flag,
+                               self.operator_lookup_flag,
+                               self.context_access_flag,
+                               self.args_flag,
+                               self.print_flag,
+                               ]
 
         self.pst: deque[Node] | None = None
         self.errors = deque([])
@@ -95,12 +109,14 @@ class Parser:
         print(f"\n{pst}\n")
 
         while self.current_token and self.current_token.type != EOF:
+            if self.current_token.lexeme == EOF:
+                break
+
             stmt = self.statement()
             if stmt is not None:
+                print("\nRETURNED THIS STMT\n"
+                      f"**\n{stmt}\n**")
                 pst.append(stmt)
-                print(f'\nMain parser\n\nThis is the symbol table\n{self.symbol_table}\nWorking from => '
-                      f'{self.current_token} then {self.next_token}\n')
-                print(f"\n{pst}\n")
             self.pst = pst
         return pst
 
@@ -119,11 +135,14 @@ class Parser:
             else:
                 self._error()
 
-        elif Parser.is_ident(self.current_token):
-            if self.next_token.type == ASSIGN:
-                return self.assign_statement()
-            elif self.next_token.type == LPAREN:
-                return self.parse_call_statement(self.current_token, self.symbol_table)
+        elif self.current_token.type == IF:
+            return self.if_statement()
+
+        elif self.current_token.type == PRINT:
+            return self.print_statement()
+
+        elif self.current_token.type == CLOCK:
+            return self.clock_statement()
 
         elif self.current_token.type in (CONTEXT, LBRACE):  # Left curly brace (new context)
             context_name = None
@@ -150,6 +169,12 @@ class Parser:
                                 message=f"You've reached the limit of inner scopes for this particular parent -> " +
                                         f"{self.symbol_table.name}")
 
+        elif Parser.is_ident(self.current_token):
+            if self.next_token.type == ASSIGN:
+                return self.assign_statement()
+            elif self.next_token.type == LPAREN:
+                return self.parse_call_statement(self.current_token, self.symbol_table)
+
             context_token.type = "CONTEXT"
             self._consume(LBRACE)
             self.symbol_table, new_context_symbol = self.symbol_table.enter_context(context_name,
@@ -165,26 +190,18 @@ class Parser:
             self.symbol_table = self.symbol_table.exit_context()
             print(f'\nOld symbol table {self.symbol_table}\n')
             return context_node
+
         elif self.current_token.type == RETURN:
             return self.return_statement()
-
-        elif self.current_token.type == IF:
-            return self.if_statement()
-
-        elif self.current_token.type == PRINT:
-            return self.print_statement()
-
-        elif self.current_token.type == CLOCK:
-            return self.clock_statement()
 
         elif self.current_token.type == FUNCTION:
             self.function_flag = True
             func_statement_node: FunctionLiteralNode = self.function_statement()
             self.function_flag = False
             return func_statement_node
+        elif self.current_token.type == EOF:
+            return None
         else:
-            bool(self.current_token.type == IF)
-            breakpoint()
             return self.expression_statement()
 
     def block_statement(self):
@@ -327,14 +344,16 @@ class Parser:
     def print_statement(self):
         print_token = self.current_token
         self._consume(PRINT)
-        self.call_flag = True
-        expr = self.parse_call_statement(print_token,
-                                         self.symbol_table)
-        self.call_flag = False
-        return PrintStatementNode(Token(PRINT, 'print'), expr, None)
+        self.print_flag = True
+        print_node: PrintStatementNode = self.parse_call_statement(print_token,
+                                                             self.symbol_table)
+        self.print_flag = False
+        if self.current_token.lexeme == SEMICOLON:
+            self._consume(SEMICOLON)
+        return print_node
 
     def clock_statement(self):
-        print('\nIN PRINT STATEMENT\n'
+        print('\nIN CLOCK STATEMENT\n'
               f'\n{self.current_token}\n'
               f'\n{self.next_token}\n')
         self._consume(CLOCK)
@@ -375,10 +394,10 @@ class Parser:
             context_value = self.parse_context_access()
             self.context_access_flag = False
             return context_value
-        elif self.if_parse_flag:
-            conditions = deque([])
-            return self.shunting_yard_if(None,
-                                         conditions)
+        elif self.call_flag or self.print_flag:
+            return self.parse_primary()
+        elif self.if_parse_flag and (not self.call_flag):
+            return self.shunting_yard_if()
         else:
             return self.shunting_yard()
 
@@ -445,9 +464,11 @@ class Parser:
         # Parse the condition using the shunting yard
         # algorithm for 'if'
         self.shunting_yard_if(if_statement_node)
+        print(if_statement_node)
         return if_statement_node
 
     def build_condition_node(self):
+        self.args_flag: bool = True
         self._consume(LPAREN)
         left_operand = self.parse_primary()
         print('\nTHIS IS THE LEFT OPERAND'
@@ -455,7 +476,7 @@ class Parser:
               f'\n{self.current_token} {self.next_token}\n')
         # Consume the first operand
         self._consume()
-        if self.current_token in bool_ops:
+        if self.current_token.lexeme in bool_ops:
             operator_token = self.current_token
             self._consume()
         else:
@@ -468,25 +489,29 @@ class Parser:
         right_operand = self.parse_primary()
         print('\nTHIS IS THE RIGHT OPERAND'
               f'\n{right_operand}\n')
-        copyright()
         # Consume the second operand
         self._consume()
-        self._consume(RPAREN)
+        if self.current_token.lexeme == RPAREN:
+            self._consume(RPAREN)
         self._consume(LBRACE)
         condition_statements = deque([])
         while self.current_token.type != RBRACE:
             condition_statements.append(self.statement())
+            if self.current_token.lexeme == SEMICOLON:
+                self._consume(SEMICOLON)
+
         condition_node = IfConditionNode(left_operand,
                                          right_operand,
                                          operator_token,
                                          condition_statements)
         self._consume(RBRACE)
+        self.args_flag: bool = False
         return condition_node
 
     def shunting_yard_if(self,
-                         if_statement: IfStatementNode | None
+                         if_statement: IfStatementNode | None = None
                          ):
-        while self.current_token.type != SEMICOLON:
+        while self.current_token.type not in (SEMICOLON, EOF):
             token = self.current_token
             if token.type == LPAREN:
                 if self.if_parse_flag:
@@ -510,10 +535,11 @@ class Parser:
                 alternative = StatementListNode(self.current_token, deque())
                 self._consume(ELSE)
                 self._consume(LBRACE)
-                while self.current_token.type != RBRACE:
+                while self.current_token.type not in (RBRACE, EOF):
                     alternative.statements.append(self.statement())
-                self._consume(RBRACE)
-                if_statement.conditions.append(alternative)
+                if self.current_token.type == RBRACE:
+                    self._consume(RBRACE)
+                if_statement.alternative = alternative
             else:
                 # Handle other tokens or errors
                 print(if_statement)
@@ -521,7 +547,8 @@ class Parser:
                 self._error(self.current_token)
 
         # Done parsing the if, else if or else blocks
-        self._consume(SEMICOLON)  # Move to the next token
+        if self.current_token.type == SEMICOLON:
+            self._consume(SEMICOLON)  # Move to the next token
         self.if_parse_flag = not self.if_parse_flag
         return True
 
@@ -780,21 +807,67 @@ class Parser:
 
     def parse_call_statement(self, call_token: Token, context_table: SymbolTable):
         call_token = call_token
-        function_name = self.current_token.lexeme
+        function_name = call_token.lexeme
 
         # Assuming the parse function was not called as part of an inner context
         if self.current_token.type == IDENT:
             self._consume()
 
-        if self.call_flag and self.current_token.type == LPAREN:
+        if (self.call_flag or self.print_flag) and self.current_token.type == LPAREN:
             self._consume(LPAREN)
-            args = self.parse_arguments()
-            if self.next_token.type != RPAREN:
-                self._error(token=call_token,
-                            message=f"Expected ')' after arguments in function call '{function_name}'")
-                return None
-            # Find the function symbol in the current symbol table or its ancestors
-            function_symbol: Symbol | None = None
+            args = deque([])
+
+            if self.next_token.type == COMMA:
+                while True:
+                    args = self.parse_arguments()
+                    print(f'))DEBUG((',
+                          self.current_token, self.print_flag, self.if_parse_flag)
+                    if Parser.is_ident(self.current_token):
+                        self._consume(IDENT)
+
+                    if self.current_token.type == RPAREN:
+                        self._consume(RPAREN)
+                        break
+                    elif self.current_token.type in (SEMICOLON, RBRACE):
+                        if function_name == 'print':
+                            self.print_flag = True
+                        if self.current_token.type == SEMICOLON:
+                            self._consume(SEMICOLON)
+                        elif self.current_token.type == RBRACE:
+                            self._consume(RBRACE)
+
+                        break
+                    elif self.current_token.type == COMMA:
+                        self._consume(COMMA)
+                    else:
+                        print(f"***DID NOT MAKE **** {self.print_flag}, {self.if_parse_flag}")
+                        self._error(self.current_token)
+                        return None
+            else:
+                while True:
+                    if self.current_token.type in (IDENT, INT, STR, FLOAT, TRUE, FALSE) and \
+                            self.next_token.type == RPAREN:
+                        args.append(self.parse_primary())
+                        break
+                    elif Parser.is_ident(self.current_token) \
+                            and self.next_token.type == LPAREN:
+                        args.append(self.parse_call_statement(self.current_token,
+                                                              self.symbol_table))
+                        break
+                    elif self.next_token.lexeme in (ASTERISK, SLASH, PLUS, MINUS):
+                        args = self.shunting_yard()
+                        break
+                    else:
+                        self._error(call_token)
+                        return None
+
+                # Find the functional symbol in the current symbol table or its ancestors
+            if self.print_flag:
+                self.print_flag = False
+                return PrintStatementNode(call_token,
+                                          args,
+                                          None
+                                          )
             function_symbol, error = context_table.lookup(function_name)
             if error:
                 self._error(call_token,
@@ -841,14 +914,31 @@ class Parser:
                 arguments=args)
 
         # Here's the key change: Follow LL(1) to ensure ArgumentsListNode
+        arg_string = ''
         while self.current_token.type != RPAREN:  # Lookahead for closing parenthesis
+            arg_string += f'{self.current_token.lexeme}'
             args.append(self.expression())
+            if self.current_token.type == IDENT:
+                self._consume(IDENT)
+
+            print(f'\nCHECK DEBUG\n{self.current_token}\n'
+                  f'{self.next_token}\n')
             if self.current_token.type != COMMA:
                 break
-            self._consume()  # Consume comma separator
+            arg_string += ', '
+            self._consume(COMMA)  # Consume comma separator
+
+        # Consume the right parenthesis before returning the Arguments node
+        if self.current_token.type == RPAREN:
+            if self.next_token.type == SEMICOLON:
+                self._consume(RPAREN)
+                self._consume(SEMICOLON)
+
+        elif self.current_token.type == SEMICOLON:
+            self._consume(SEMICOLON)
 
         return ArgumentsListNode(
-            Token("ARGUMENTS", "()", self.current_token.begin_position, self.current_token.line_position),
+            Token("ARGUMENTS", arg_string, self.current_token.begin_position, self.current_token.line_position),
             arguments=args)
 
     def parse_primary(self):
@@ -897,7 +987,12 @@ class Parser:
                     return None
                 else:
                     # TODO: HOW CAN CONTROL FLOW GRAPHS AND GRAPH COLORING HELP?
-                    print(f"\nLookup returned this node {symbol.node}\n")
+                    print(f"\nLookup returned this node {symbol.node}\n"
+                          f"\n{self.current_token}\n"
+                          f"\n{self.next_token}\n")
+                    if self.print_flag and self.next_token.type == RPAREN:
+                        self._consume()
+                        self._consume(RPAREN)
                     return symbol.node
         except SyntaxError:
             self._error()
@@ -931,6 +1026,8 @@ class Parser:
         if isinstance(self.current_token, Token):
             if self.current_token.type == SEMICOLON:
                 self._consume(SEMICOLON)
+        for _ in self.critical_flags:
+            _ = False
         return None
 
     @classmethod
