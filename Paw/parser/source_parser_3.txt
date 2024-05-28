@@ -1,23 +1,32 @@
+// Simple program in Monke to create variables and use functions.
+// Also how to call them and utilize inbuilt functions with them.
+
 let a = 10;
 let b = 15;
-let c;
 
-c = a + b * a / b; // Answer should be 20 in this case
-let d;
-d = 2 * (2 + 2) / 2;
-
-fn add (x,y){
-let a;
-return (a = x + y);
+if (a > b) {
+print(a);
+}
+else if (b < a) {
+print(b);
+}
+else{
+print(a,b);
 };
 
-add(a,b);
-add(5,10);
-print(add(c,d));
+//let c;
 
-//if a > b {
-//print(a);
-//}
-//else if b < a {
-//print(b);
+//c = a + b * a / b; // Answer should be 20 in this case
+//let d;
+//d = 2 * (2 + 2) / 2;
+
+
+//fn add (x,y){
+//let a;
+//return (a = x + y);
 //};
+
+//add(a,b);
+//add(5,10);
+//print(add(c,d));
+

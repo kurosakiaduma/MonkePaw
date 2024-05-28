@@ -58,6 +58,7 @@ RBRACE = "}"
 
 # Context accessor
 DOUBLE_COLON = "::"
+
 # Keywords
 CONTEXT = "CONTEXT"
 GLOBAL = "GLOBAL"
