@@ -146,7 +146,7 @@ class Tree:
     def get_children(self):
         return self.nodes
 
-    def get_val(self):
+    def get_val(self, arg: Any = None):
         if isinstance(self.node, ProgramNode):
             return "PROGRAM: -> Monke"
         elif isinstance(self.node, StatementListNode):
@@ -196,13 +196,16 @@ class Tree:
                 try:
                     node = next(nodes)
                     if isinstance(node, PrintStatementNode):
-                        string += f'{node._type}, '
+                        if isinstance(node.expression, deque):
+                            return self.get_val(node.expression)
+                        string += f'{node.expression.name}, '
                     elif isinstance(node, Node):
                         string += f'{node.token.type} {node.name}, '
                     elif isinstance(node, deque):
                         string += f'{len(node)} inner stmts, '
                 except StopIteration:
                     temp = string.split(', ')
+                    print(temp)
                     if len(temp) < 3:
                         string = temp[0]
                     else:
