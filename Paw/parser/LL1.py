@@ -184,8 +184,14 @@ class PrintStatementNode(StatementNode):
                '***END***\n'
 
     def __repr__(self):
-        string = f'\n{self.token.lexeme}->{repr(self.expression)}' \
-                 '\n***END***\n'
+        if not isinstance(self.expression, deque):
+            string = f'\n{self.token.lexeme}->{repr(self.expression)}' \
+                     '\n***END***\n'
+        else:
+            string = f'{self.token.lexeme}('
+            string += ','.join(i.name for i in self.expression)
+            string += ')'
+
         return string
 
 

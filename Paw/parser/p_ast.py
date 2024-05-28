@@ -171,27 +171,13 @@ class Tree:
                 return f'{self.node.expression.left.name} {self.node.expression.operator} {self.node.expression.right.name}'
 
         elif isinstance(self.node, IfStatementNode):
-            return f'{self.node.name}'
+            return f'{self.node._type}'
 
         elif isinstance(self.node, IfConditionNode):
             return f'left: {self.node.left} bool_op: {self.node.operator} right: {self.node.right}'
 
         elif isinstance(self.node, PrintStatementNode):
-            string = f'{self.node.name}('
-            if isinstance(self.node.expression, ArgumentsListNode):
-                args = iter(self.node.expression.arguments)
-                try:
-                    while True:
-                        arg = next(args)
-                        string += f'{arg.token.lexeme}, '
-                except StopIteration:
-                    string += ')'
-                    print('\nDone working on args presentation\n'
-                          f'\n{string}\n')
-            elif isinstance(self.node.expression, StatementListNode):
-                string = f'STMTS: -> {self.node.name} TOTAL: {len(self.node.expression.statements)}'
-            return string
-
+            return f'{repr(self.node)}'
         elif isinstance(self.node, IdentifierNode):
             return f'{self.node.token.type}: {self.node.token.lexeme}'
         elif isinstance(self.node, IntegerLiteralNode):
@@ -204,7 +190,33 @@ class Tree:
         elif isinstance(self.node, str):
             return f'OPERATOR: {self.node}'
         elif isinstance(self.node, deque):
-            return f'{self.node}'
+            string = '('
+            nodes = iter(self.node)
+            while True:
+                try:
+                    node = next(nodes)
+                    if isinstance(node, PrintStatementNode):
+                        string += f'{node._type}, '
+                    elif isinstance(node, Node):
+                        string += f'{node.token.type} {node.name}, '
+                    elif isinstance(node, deque):
+                        string += f'{len(node)} inner stmts, '
+                except StopIteration:
+                    temp = string.split(', ')
+                    if len(temp) < 3:
+                        string = temp[0]
+                    else:
+                        string = ','.join(i for i in temp)
+                    string += ')'
+                    break
+            print('\n')
+            print(f'{self.node}\n')
+            print(f'{self.nodes}\n'
+                  f'\n{temp}\n')
+            print(f'{string}')
+            print('\nBREAK')
+            return string
+
         else:
             print(self.node)
             return f'{self.node}'
@@ -217,9 +229,14 @@ class Tree:
         return child
 
     def __str__(self):
-        return f"Tree(Node: {self.node.name}, " \
-               f"\nParent: {self.parent.node.name}, " \
-               f"\nNodes: {self.nodes})\n"
+        if isinstance(self.node, deque):
+            return f"Tree(Node: {self.name}, " \
+                   f"\nParent: {self.parent.node.name}, " \
+                   f"\nNodes: {self.nodes})\n"
+        else:
+            return f"Tree(Node: {self.node.name}, " \
+                   f"\nParent: {self.parent.node.name}, " \
+                   f"\nNodes: {self.nodes})\n"
 
     def __repr__(self):
         if isinstance(self.parent, (str, int, float)):
