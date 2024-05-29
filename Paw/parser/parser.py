@@ -48,13 +48,13 @@ class Parser:
                                ]
 
         self.pst: deque[Node] | None = None
-        self.errors = deque([])
+        self.errors: deque[ParseError] = deque([])
         self._consume()
 
     def show_ast(self):
         pt = PrettyPrintTree(lambda x: x.get_children(),
                              lambda x: x.get_val(),
-                             orientation=PrettyPrintTree.Horizontal
+                             orientation=PrettyPrintTree.Vertical
                              )
         program_symbol, error = self.symbol_table.lookup('PROGRAM')
         program_node: ProgramNode = program_symbol.node
@@ -92,7 +92,7 @@ class Parser:
         pst = deque([])
 
         # Don't enter a new context here
-        stmt_list_node = StatementListNode(Token('STATEMENTS', 'STATEMENTS',
+        stmt_list_node = StatementListNode(Token('GLOBAL_STATEMENTS', 'MONKE_GLOBAL_STATEMENTS',
                                                  None, None, None),
                                            pst
                                            )
@@ -118,10 +118,23 @@ class Parser:
                       f"**\n{stmt}\n**")
                 pst.append(stmt)
             self.pst = pst
+
+        print("\nPARSE COMPLETED\n")
+        if self.errors:
+            print("\nSTATUS: ❌ You have some errors you should attend to!\n")
+            for error in self.errors:
+                print(error)
+                print(repr(error))
+        else:
+            print("\nSTATUS: 👏🏿🥳 Your parse was successful!"
+                  "\nYou can now evaluate ("
+                  "Run Semantic Analysis on) the Parse Tree to create an Abstract Syntax Tree\n")
+
         return pst
 
     def statement(self):
-        print(f'\nParsing {self.current_token}\n'
+        print(f'\n------------------------------------------------------------------------------'
+              f'\nParsing {self.current_token}\n'
               f'Next is {self.next_token}\n'
               f'\nSTATEMENTS AND SYMBOL TABLE\n'
               f'\n{self.symbol_table}\n'
@@ -464,7 +477,7 @@ class Parser:
         # Parse the condition using the shunting yard
         # algorithm for 'if'
         self.shunting_yard_if(if_statement_node)
-        print(if_statement_node)
+        # print(if_statement_node)
         return if_statement_node
 
     def build_condition_node(self):
@@ -820,8 +833,6 @@ class Parser:
             if self.next_token.type == COMMA:
                 while True:
                     args = self.parse_arguments()
-                    print(f'))DEBUG((',
-                          self.current_token, self.print_flag, self.if_parse_flag)
                     if Parser.is_ident(self.current_token):
                         self._consume(IDENT)
 
@@ -921,8 +932,6 @@ class Parser:
             if self.current_token.type == IDENT:
                 self._consume(IDENT)
 
-            print(f'\nCHECK DEBUG\n{self.current_token}\n'
-                  f'{self.next_token}\n')
             if self.current_token.type != COMMA:
                 break
             arg_string += ', '

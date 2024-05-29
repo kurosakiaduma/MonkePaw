@@ -78,25 +78,27 @@ def main():
         elif command in ["parser", "prs"]:
             while True:
                 parser_command = input("(Parser)> ").lower()
+
                 if parser_command in ["parse_directly", "pd"]:
                     statement = input("Enter your statement: ")
                     parser_lexer = scan(source=statement)
                     print(f'TOKENS - {parser_lexer.tokens}')
                     p = Parser(parser_lexer.tokens)
-                    pst = p.parse()
-                    print(f'\nHERE IS THE PST STATEMENTS: \n{pst}\n')
+                    p.parse()
+
                 elif parser_command in ["parse_file", "pf"]:
                     filename = input("Enter the full path of the file: ")
                     parser_lexer = scan(filename=filename)
                     p = Parser(parser_lexer.tokens)
-                    pst = p.parse()
-                    print(f'\nHERE IS THE PST STATEMENTS: \n{pst}\n')
+                    p.parse()
+
                 elif parser_command in ["show_ast", "sa"]:
                     try:
                         print(f'\nHERE IS THE Parse Tree\n')
                         p.show_ast()
                     except UnboundLocalError:
                         print("\nPlease parse tokens before displaying Concrete Syntax Tree")
+
                 elif parser_command in ["show_symbol_table", "sst"]:
                     try:
                         print(p.symbol_table)

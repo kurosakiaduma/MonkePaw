@@ -294,7 +294,10 @@ class SymbolTable:
                 textwrap.fill(str(symbol._type), width=20),
                 str(symbol.line_declared) if symbol.line_declared else "-",  # Handle missing line number
                 str(symbol.context_level),
-                textwrap.fill(str(f'{symbol}')) if symbol._type == "SymbolTable" else textwrap.fill(str(symbol.value), width=60),  # Wrap value with max width of 20
+                # Wrap value with max width of 60
+                textwrap.fill(str(f'{symbol}')) if symbol._type == "SymbolTable" else textwrap.fill(str(symbol.value),
+                                                                                                    width=80),
+
             ]
             table_data.append(row)
 

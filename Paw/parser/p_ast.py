@@ -197,8 +197,24 @@ class Tree:
                     node = next(nodes)
                     if isinstance(node, PrintStatementNode):
                         if isinstance(node.expression, deque):
-                            return self.get_val(node.expression)
-                        string += f'{node.expression.name}, '
+                            string = '('
+                            while True:
+                                try:
+                                    deque_nodes = iter(node.expression)
+                                    deque_node = next(deque_nodes)
+                                    if isinstance(deque_node, deque):
+                                        deque_node_string = self.get_val(deque_node)
+                                        string += deque_node_string
+
+                                    else:
+                                        string += f'{deque_node.name}, '
+                                except StopIteration:
+                                    temp = string.split(', ')
+                                    string = ','.join(s for s in temp)
+                                    string += ')'
+                                    return string
+                        else:
+                            string += f'{node.expression.name}, '
                     elif isinstance(node, Node):
                         string += f'{node.token.type} {node.name}, '
                     elif isinstance(node, deque):
@@ -233,32 +249,32 @@ class Tree:
 
     def __str__(self):
         if isinstance(self.node, deque):
-            return f"Tree(Node: {self.name}, " \
+            return f"\nTree(Node: {self.name}, " \
                    f"\nParent: {self.parent.node.name}, " \
                    f"\nNodes: {self.nodes})\n"
         else:
-            return f"Tree(Node: {self.node.name}, " \
+            return f"\nTree(Node: {self.node.name}, " \
                    f"\nParent: {self.parent.node.name}, " \
                    f"\nNodes: {self.nodes})\n"
 
     def __repr__(self):
         if isinstance(self.parent, (str, int, float)):
-            string = f"Tree(Node: {repr(self.node)}, " \
+            string = f"\nTree(Node: {repr(self.node)}, " \
                      f"\nParent: {repr(self.parent)}, " \
                      f"\nNodes: {repr(self.nodes)}) \n"
 
         elif isinstance(self.parent, Node):
-            string = f"Tree(Node: {repr(self.node.name)}, " \
+            string = f"\nTree(Node: {repr(self.node.name)}, " \
                      f"\nParent: {repr(self.parent.value.name)}, " \
                      f"\nNodes: {repr(self.nodes)}) \n"
 
         elif isinstance(self.parent, Tree):
-            string = f"Tree(Node: {repr(self.name)}, " \
+            string = f"\nTree(Node: {repr(self.name)}, " \
                      f"\nParent: {repr(self.parent.name)}, " \
                      f"\nNodes: {repr(self.nodes)}) \n"
 
         else:
-            string = f"Tree(Node: {repr(self.node)}, " \
+            string = f"\nTree(Node: {repr(self.node)}, " \
                      f"\nParent: {repr(self.parent.node)}, " \
                      f"\nNodes: {repr(self.nodes)}) \n"
         return string
