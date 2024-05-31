@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections import deque
 from typing import Deque, Dict
-from Paw.tokens.tokens import *
-from Paw.symbol_table.symbol_table import *
+from tokens.tokens import *
+from symbol_table.symbol_table import *
 
 
 class Node:

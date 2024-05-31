@@ -1,4 +1,4 @@
-from Paw.tokens.tokens import Token
+from tokens.tokens import Token
 
 
 class ParseError:

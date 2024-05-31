@@ -3,10 +3,10 @@ import time
 from collections import deque
 from typing import Iterator
 from PrettyPrint import PrettyPrintTree
-from .LL1 import *
 from symbol_table.symbol_table import SymbolTable
 from symbol_table.symbol_table import Symbol
 
+from .LL1 import *
 from .p_err import ParseError
 from .p_ast import *
 

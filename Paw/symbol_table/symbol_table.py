@@ -5,7 +5,9 @@ from collections import deque, ChainMap
 from tabulate import tabulate
 from typing import Dict, List, Deque
 from tokens.tokens import MAX_CONTEXT_DEPTH
-from parser.LL1 import *
+from parser.LL1 import Node, ProgramNode, StatementListNode, StatementNode, LetStatementNode, AssignStatementNode,\
+ExpressionNode, ReturnStatementNode, IfStatementNode, PrintStatementNode, ClockStatementNode,FunctionLiteralNode
+from tokens.tokens import *
 
 sys.path.append("..")
 # TODO: Add symbols dict to each new symbol table instance as done with global_symbols to enhance lookup
@@ -17,7 +19,6 @@ class Symbol:
             node: ProgramNode | StatementListNode | StatementNode | LetStatementNode |
                   AssignStatementNode | ExpressionNode | ReturnStatementNode |
                   IfStatementNode | PrintStatementNode | ClockStatementNode | FunctionLiteralNode | SymbolTable,
-
             context_level
     ):
         self.node = node

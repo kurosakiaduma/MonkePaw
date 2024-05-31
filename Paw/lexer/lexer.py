@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections import deque
-from Paw.tokens.tokens import *
+from tokens.tokens import *
 
 
 class Lexer:
