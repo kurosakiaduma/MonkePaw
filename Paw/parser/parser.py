@@ -556,7 +556,6 @@ class Parser:
             else:
                 # Handle other tokens or errors
                 print(if_statement)
-                breakpoint()
                 self._error(self.current_token)
 
         # Done parsing the if, else if or else blocks

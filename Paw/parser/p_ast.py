@@ -122,7 +122,6 @@ class Tree:
 
             except UnboundLocalError:
                 print("\nABOUT TO BREAK\n")
-                breakpoint()
 
         elif isinstance(self.node, PrintStatementNode):
             print_tree = deque([])
